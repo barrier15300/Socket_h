@@ -636,6 +636,8 @@ public:
 		});
 	}
 
+	AES128 CryptEngine;
+
 protected:
 
 	bool Crypt(const std::vector<uint8_t>& src, std::vector<uint8_t>& dest, typename AES128::cryptmode_t mode) {
@@ -648,7 +650,6 @@ protected:
 		return Crypt(src, dest, &AES128::CTRDecrypt);
 	}
 
-	AES128 cryptengine;
 };
 
 
