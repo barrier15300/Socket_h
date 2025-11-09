@@ -1,0 +1,267 @@
+﻿#pragma once
+#include <cstdint>
+#include <string_view>
+#include <string>
+#include <vector>
+#include <exception>
+#include <stdexcept>
+#include <fstream>
+
+/// <summary>
+/// Header in Packet
+/// </summary>
+
+struct Header {
+
+	template<class T>
+	using enum32_t = std::enable_if_t<std::is_enum_v<T> && (sizeof(T) == sizeof(uint32_t)), T>;
+
+	Header() {}
+	template<class T>
+	explicit Header(enum32_t<T> _enum) : Header(static_cast<uint32_t>(_enum)) {}
+	explicit Header(uint32_t datatype) {
+		Type = datatype;
+	}
+
+	template<class T>
+	enum32_t<T> TypeAs() const {
+		return static_cast<T>(Type);
+	}
+
+	template<class T>
+	bool IsSameAs() const {
+		return Type = type_hash_code<T>();
+	};
+
+	template <typename T>
+	static constexpr std::string_view type_name() {
+#if defined(__clang__) || defined(__GNUC__)
+		constexpr std::string_view func = __PRETTY_FUNCTION__;
+		constexpr std::string_view prefix = "T = ";
+		constexpr std::string_view suffix = "]";
+#elif defined(_MSC_VER)
+		constexpr std::string_view func = __FUNCSIG__;
+		constexpr std::string_view prefix = "type_name<";
+		constexpr std::string_view suffix = ">(void)";
+#else
+#   error Unsupported compiler
+#endif
+		const auto start = func.find(prefix) + prefix.size();
+		const auto end = func.rfind(suffix);
+		return func.substr(start, end - start);
+	}
+
+	template <typename T>
+	static constexpr std::uint32_t type_hash_code() {
+		constexpr auto name = type_name<T>();
+		// Fowler–Noll–Vo hash (FNV-1a) for deterministic results
+		std::uint32_t hash = 2166136261U;
+		for (char c : name) {
+			hash = (hash ^ static_cast<unsigned char>(c)) * 16777619U;
+		}
+		return hash;
+	}
+
+	uint32_t Size{};
+	uint32_t Type{};
+
+};
+
+/// <summary>
+/// Packet 
+/// </summary>
+
+struct Packet {
+
+	static constexpr size_t HeaderSize = sizeof(Header);
+
+	using buf_t = std::vector<uint8_t>;
+	template<class T>
+	using stdlayout = std::enable_if_t<std::is_standard_layout_v<T>, T>;
+
+	template<class T>
+	using to_byteable = std::enable_if_t<std::is_same<decltype(std::declval<T>().ToBytes()), buf_t>::value, T>;
+	
+	using lastbyte_t = decltype(std::declval<const buf_t>().end());
+
+	template<class T>
+	using from_byteable = std::enable_if_t<std::is_same<decltype(std::declval<T>().FromBytes(std::declval<buf_t>())), lastbyte_t>::value, T>;
+
+	Packet(const Packet&) = default;
+	Packet(Packet&&) = default;
+
+	Packet& operator=(const Packet&) = default;
+	Packet& operator=(Packet&&) = default;
+
+	Packet() {};
+	Packet(buf_t&& from) { m_buffer = std::move(from); }
+	Packet& operator=(buf_t&& from) { m_buffer = std::move(from); }
+
+	Packet(uint32_t hash, const void* src, uint32_t size) {
+		Header head(hash);
+		head.Size = size;
+		m_buffer.resize(HeaderSize + head.Size);
+		std::memcpy(m_buffer.data(), std::addressof(head), HeaderSize);
+		std::memcpy(m_buffer.data() + HeaderSize, src, head.Size);
+	}
+
+	template<class T>
+	Packet(Header::enum32_t<T> datatype, const void* src, uint32_t size) : Packet(static_cast<uint32_t>(datatype), src, size) {}
+
+	Packet(size_t id, const std::vector<uint8_t>& data) : Packet(id, data.data(), data.size()) {}
+	template<class enumT>
+	Packet(Header::enum32_t<enumT> type, const std::vector<uint8_t>& data) : Packet(type, data.data(), data.size()) {}
+	Packet(const std::vector<uint8_t>& data) : Packet(Header::type_hash_code<std::vector<uint8_t>>(), data.data(), data.size()) {}
+	
+	template<class T>
+	Packet(size_t id, const std::vector<stdlayout<T>>& data) : Packet(id, data.data(), data.size() * sizeof(T)) {}
+	template<class enumT, class T>
+	Packet(Header::enum32_t<enumT> type, const std::vector<stdlayout<T>>& data) : Packet(type, data.data(), data.size() * sizeof(T)) {}
+	template<class T>
+	Packet(const std::vector<stdlayout<T>>& data) : Packet(Header::type_hash_code<std::vector<T>>(), data.data(), data.size() * sizeof(T)) {}
+
+	template<size_t len>
+	Packet(size_t id, const char(&data)[len]) : Packet(id, std::addressof(data), len - 1) {}
+	template<class enumT, size_t len>
+	Packet(Header::enum32_t<enumT> type, const char(&data)[len]) : Packet(type, std::addressof(data), len - 1) {}
+	template<size_t len>
+	Packet(const char(&data)[len]) : Packet(Header::type_hash_code<std::string>(), std::addressof(data), len - 1) {}
+
+	Packet(size_t id, const std::string& data) : Packet(id, data.data(), data.size()) {}
+	template<class enumT>
+	Packet(Header::enum32_t<enumT> type, const std::string& data) : Packet(type, data.data(), data.size()) {}
+	Packet(const std::string& data) : Packet(Header::type_hash_code<std::string>(), data.data(), data.size()) {}
+	
+	template<class T>
+	Packet(size_t id, const stdlayout<T>& data) : Packet(id, std::addressof(data), sizeof(T)) {}
+	template<class enumT, class T>
+	Packet(Header::enum32_t<enumT> type, const stdlayout<T>& data) : Packet(type, std::addressof(data), sizeof(T)) {}
+	template<class T>
+	Packet(const stdlayout<T>& data) : Packet(Header::type_hash_code<T>(), std::addressof(data), sizeof(T)) {}
+
+	template<class T>
+	Packet(size_t id, const to_byteable<T>& data) : Packet(id, std::addressof(data), sizeof(T)) {}
+	template<class enumT, class T>
+	Packet(Header::enum32_t<enumT> type, const to_byteable<T>& data) : Packet(type, std::addressof(data), sizeof(T)) {}
+	template<class T>
+	Packet(const to_byteable<T>& data) : Packet(Header::type_hash_code<T>(), std::addressof(data), sizeof(T)) {}
+
+	template<class T>
+	Packet(size_t id, const std::vector<to_byteable<T>>& data) {
+		buf_t b;
+		b.reserve(data.size() * sizeof(T));
+		for (auto&& elem : data) {
+			buf_t temp = Convert<T>(elem);
+			b.insert(b.end(), temp.begin(), temp.end());
+		}
+		Header head{};
+		head.Size = b.size();
+		head.Type = id;
+		m_buffer.reserve(HeaderSize + b.size());
+		m_buffer.insert(m_buffer.end(), (uint8_t*)&head, (uint8_t*)&head + HeaderSize);
+		m_buffer.insert(m_buffer.end(), b.begin(), b.end());
+	}
+	template<class enumT, class T>
+	Packet(Header::enum32_t<enumT> type, const std::vector<to_byteable<T>>& data) : Packet(static_cast<uint32_t>(type), data) {}
+	template<class T>
+	Packet(const std::vector<to_byteable<T>>& data) : Packet(Header::type_hash_code<std::vector<to_byteable<T>>>(), data) {}
+
+	explicit Packet(std::ifstream& ifs) {
+		std::istreambuf_iterator<std::ifstream::char_type> begin(ifs);
+		std::istreambuf_iterator<std::ifstream::char_type> end;
+
+		std::string infile(begin, end);
+
+		*this = Packet(Header::type_hash_code<FILE>(), infile);
+	}
+
+	size_t Size() const { return m_buffer.size(); }
+
+	const buf_t& GetBuffer() const { return m_buffer; }
+
+	std::optional<Header> GetHeader() const {
+		if (CheckHeader(0)) {
+			return std::nullopt;
+		}
+		Header ret;
+		std::memcpy(&ret, m_buffer.data(), HeaderSize);
+		return ret;
+	}
+
+	template<class T>
+	std::optional<stdlayout<T>> Get() const {
+		if (CheckHeader(sizeof(T))) {
+			return std::nullopt;
+		}
+		T ret;
+		std::memcpy(&ret, m_buffer.data() + HeaderSize, sizeof(T));
+		return ret;
+	}
+
+	template<class T>
+	std::optional<from_byteable<T>> Get() const {
+		if (CheckHeader()) {
+			return std::nullopt;
+		}
+		auto&& [ret, _] = Convert<T>({m_buffer.begin() + HeaderSize, m_buffer.end()});
+		return ret;
+	}
+	
+	template<class T>
+	std::optional<std::enable_if_t<std::is_same<T, std::string>::value, std::string>> Get() const {
+		if (CheckHeader()) {
+			return std::nullopt;
+		}
+		size_t size = m_buffer.size() - HeaderSize;
+		std::string ret(size, '\0');
+		std::memcpy(ret.data(), m_buffer.data() + HeaderSize, size);
+		return ret;
+	}
+
+	template<class T>
+	std::optional<std::vector<stdlayout<T>>> GetArray() const {
+		if (CheckHeader()) {
+			return std::nullopt;
+		}
+		size_t dataSize = (m_buffer.size() - HeaderSize) / sizeof(T);
+		std::vector<T> data(dataSize);
+		std::memcpy(data.data(), m_buffer.data() + HeaderSize, m_buffer.size() - HeaderSize);
+		return data;
+	}
+
+	template<class T>
+	std::optional < std::vector<from_byteable<T>>> GetArray() const {
+		if (CheckHeader()) {
+			return std::nullopt;
+		}
+		std::vector<from_byteable<T>> ret;
+		lastbyte_t it = m_buffer.begin() + HeaderSize;
+		while (it < m_buffer.end()) {
+			auto&& [elem, last] = Convert<T>({it, m_buffer.end()});
+			ret.push_back(std::move(elem));
+			it = last;
+		}
+		return ret;
+	}
+
+	template<class T>
+	static buf_t Convert(const to_byteable<T> &from) {
+		return from.ToBytes();
+	}
+
+	template<class T>
+	static std::pair<from_byteable<T>, lastbyte_t> Convert(const buf_t& from) {
+		T ret;
+		lastbyte_t i = ret.FromBytes(from);
+		return {ret, i};
+	}
+
+private:
+
+	bool CheckHeader(size_t option = 1) const {
+		return m_buffer.size() < HeaderSize + option;
+	}
+
+	buf_t m_buffer{};
+
+};
