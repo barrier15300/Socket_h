@@ -26,7 +26,11 @@ int main(int argc, char* argv[]) {
 	aes.Init(key);
 	aes.Initializer(iv);
 
+
 	size_t len = 1 << 7;
+
+	Packet pak = Packet(len);
+
 	std::string s = std::string(len, '\x55');
 	//std::string s = "In a quiet corner of the digital realm, streams of encrypted thoughts flow endlessly, guarded by elegant ciphers born of pure logic.";
 	AES128::bytearray message{s.begin(), s.end()};

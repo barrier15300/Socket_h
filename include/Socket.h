@@ -513,18 +513,13 @@ public:
 		if (Recv(head)) {
 			return std::nullopt;
 		}
-		Packet ret;
-		ret = std::move(head);
-		bytearray data(ret.GetHeader()->Size);
+		Packet pak;
+		pak = std::move(head);
+		bytearray data(pak.GetHeader()->Size);
 		if (Recv(data)) {
 			return std::nullopt;
 		}
-		bytearray pak;
-		pak.reserve(Packet::HeaderSize + data.size());
-		pak.insert(pak.end(), head.begin(), head.end());
-		pak.insert(pak.end(), data.begin(), data.end());
-		ret = std::move(pak);
-		return ret;
+		return Packet(pak.GetHeader()->Type, data);
 	}
 
 	bool EncryptionSend(const bytearray& src) {
@@ -544,30 +539,22 @@ public:
 		}
 		bytearray data(src.GetBuffer().begin() + Packet::HeaderSize, src.GetBuffer().end());
 		Encrypt(data, data);
-		bytearray target;
-		target.reserve(Packet::HeaderSize + data.size());
-		target.insert(target.end(), src.GetBuffer().begin(), src.GetBuffer().begin() + Packet::HeaderSize);
-		target.insert(target.end(), data.begin(), data.end());
-		return Send(target);
+		Packet pak = Packet(src.GetHeader()->Type, data);
+		return Send(pak);
 	}
 	std::optional<Packet> EncryptionRecv() {
 		bytearray head(Packet::HeaderSize);
 		if (Recv(head)) {
 			return std::nullopt;
 		}
-		Packet ret;
-		ret = std::move(head);
-		bytearray data(ret.GetHeader()->Size);
+		Packet pak;
+		pak = std::move(head);
+		bytearray data(pak.GetHeader()->Size);
 		if (Recv(data)) {
 			return std::nullopt;
 		}
 		Decrypt(data, data);
-		bytearray pak;
-		pak.reserve(Packet::HeaderSize + data.size());
-		pak.insert(pak.end(), head.begin(), head.end());
-		pak.insert(pak.end(), data.begin(), data.end());
-		ret = std::move(pak);
-		return ret;
+		return Packet(pak.GetHeader()->Type, data);
 	}
 
 	std::future<bool> ASyncSend(const bytearray& src) {
