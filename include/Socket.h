@@ -373,10 +373,10 @@ public:
 	using bytearray = typename sockbase::bytearray;
 
 	template<class T>
-	using remove_cvref_t = typename sockbase::remove_cvref_t<T>;
+	using remove_cvref_t = SocketUtil::remove_cvref_t<T>;
 
 	template<class T>
-	using stdlayout = typename sockbase::stdlayout<T>;
+	using stdlayout = SocketUtil::stdlayout<T>;
 	
 	basic_TCPSocket() : sockbase() {}
 	basic_TCPSocket(typename sockbase::IPType addr) : basic_TCPSocket() {
@@ -515,7 +515,7 @@ public:
 		}
 		Packet ret;
 		ret = std::move(head);
-		bytearray data(ret.GetHeader().Size);
+		bytearray data(ret.GetHeader()->Size);
 		if (Recv(data)) {
 			return std::nullopt;
 		}
@@ -528,7 +528,7 @@ public:
 	}
 
 	bool EncryptionSend(const bytearray& src) {
-		typename sockbase::remove_cvref_t<decltype(src)> target;
+		bytearray target;
 		Encrypt(src, target);
 		return Send(target);
 	}
@@ -557,7 +557,7 @@ public:
 		}
 		Packet ret;
 		ret = std::move(head);
-		bytearray data(ret.GetHeader().Size);
+		bytearray data(ret.GetHeader()->Size);
 		if (Recv(data)) {
 			return std::nullopt;
 		}
@@ -641,7 +641,7 @@ public:
 protected:
 
 	bool Crypt(const std::vector<uint8_t>& src, std::vector<uint8_t>& dest, typename AES128::cryptmode_t mode) {
-		return ((&cryptengine)->*mode)(src, dest, src.size());
+		return ((&CryptEngine)->*mode)(src, dest, src.size());
 	}
 	bool Encrypt(const std::vector<uint8_t>& src, std::vector<uint8_t>& dest) {
 		return Crypt(src, dest, &AES128::CTREncrypt);
