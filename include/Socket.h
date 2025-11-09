@@ -14,6 +14,7 @@
 #include <sys/ioctl.h>
 #include <unistd.h>
 #include <netinet/in.h>
+#include <netdb.h>
 #endif // _MSC_BUILD
 
 #include <string>
