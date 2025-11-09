@@ -1,12 +1,12 @@
 ﻿#pragma once
 
 #ifdef _MSC_BUILD
-#ifndef _INC_WINDOWS
+#ifndef _WINDOWS_
 #include <winsock2.h>
 #include <ws2tcpip.h>
 #include <windows.h>
 #pragma comment(lib,"ws2_32.lib")
-#endif // _INC_WINDOWS
+#endif // _WINDOWS_
 #else
 #include <sys/socket.h>
 #endif // _MSC_BUILD
