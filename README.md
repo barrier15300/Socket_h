@@ -21,6 +21,8 @@
 
 詳細は、開発中の検証環境でもある`Socket.cpp`にあります。
 
+**`Windows.h`よりも先にインクルードしないとビルドに失敗します。**
+
 # Quick Start
 
 今すぐに試してみたいという方は、
@@ -30,8 +32,8 @@ Visual Studio 2026 insider Edition
 
 # Credit
 
-- Kernel (by https://x.com/kernel_vr )
-- ChatGPT (by OpenAI)
+- Kernel ( by https://x.com/kernel_vr )
+- ChatGPT ( by OpenAI )
 
 # TODO:
 
