@@ -30,8 +30,8 @@ struct Header {
 
 	template<class T>
 	bool IsSameAs() const {
-		return Type = type_hash_code<T>();
-	};
+		return Type == type_hash_code<T>();
+	}
 
 	template <typename T>
 	static constexpr std::string_view type_name() {
