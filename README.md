@@ -34,6 +34,7 @@ Visual Studio 2026 insider Edition
 
 # Credit
 
+- Apopic ( by https://github.com/apopic )
 - Kernel ( by https://x.com/kernel_vr )
 - ChatGPT ( by OpenAI )
 
