@@ -25,6 +25,10 @@
 #include <vector>
 #include <iostream>
 
+#ifdef SOCKET_H_USE_NAMESPACE
+namespace NetIO {
+#endif // SOCKET_H_USE_NAMESPACE
+
 #include "AES128.h"
 #include "Packet.h"
 
@@ -160,14 +164,14 @@ struct IPAddressBase {
 	static IPAddressBase Any() {
 		return
 			(IsIPv4 ? IPAddressBase("0.0.0.0") :
-			(IsIPv6 ? IPAddressBase("::") :
-			IPAddressBase()));
+				(IsIPv6 ? IPAddressBase("::") :
+					IPAddressBase()));
 	}
 	static IPAddressBase Loopback() {
 		return
 			(IsIPv4 ? IPAddressBase("127.0.0.1") :
-			(IsIPv6 ? IPAddressBase("::1") :
-			IPAddressBase()));
+				(IsIPv6 ? IPAddressBase("::1") :
+					IPAddressBase()));
 	}
 
 	static std::optional<IPAddressBase> SolveHostName(const std::string& hostname, Protocol protocol = Protocol::TCP) {
@@ -184,7 +188,7 @@ struct IPAddressBase {
 		freeaddrinfo(res);
 		return ret;
 	}
-	
+
 protected:
 	address_t address{};
 };
@@ -243,7 +247,7 @@ template<class ipT, Protocol _protocol>
 class SocketBase {
 public:
 	using IPType = ipT;
-	
+
 	// using poll_t;
 #ifdef _MSC_BUILD
 	using poll_t = WSAPOLLFD;
@@ -251,7 +255,7 @@ public:
 	using poll_t = struct pollfd;
 #endif // _MSC_BUILD
 
-	// using sock_t;
+// using sock_t;
 #ifdef _MSC_BUILD
 	using sock_t = SOCKET;
 #else
@@ -262,20 +266,19 @@ public:
 #ifdef _MSC_BUILD
 		WinSock::GetInstance();
 #endif // _MSC_BUILD
-		sock = socket(ipT::VersionValue, static_cast<int>(_protocol), 0);
+		sock() = socket(ipT::VersionValue, static_cast<int>(_protocol), 0);
 		if (!IsValid()) {
 			dbg_print();
 		}
-		pfd.fd = sock;
 		pfd.events = POLLIN;
 	}
 	~SocketBase() {
 		Close();
 	}
-	
+
 	SocketBase(const SocketBase&) = delete;
-	SocketBase(SocketBase&& other) noexcept : sock(other.sock), pfd(other.pfd) {
-		other.Release();
+	SocketBase(SocketBase&& other) noexcept {
+		*this = std::move(other);
 	}
 
 	SocketBase& operator=(const SocketBase&) = delete;
@@ -287,9 +290,9 @@ public:
 		if (!IsValid()) return;
 
 #ifdef _MSC_BUILD
-		closesocket(sock);
+		closesocket(sock());
 #else
-		close(sock);
+		close(sock());
 #endif
 		Release();
 	}
@@ -299,14 +302,14 @@ public:
 	}
 
 	bool IsValid() const {
-		return sock != InValidSocket();
+		return sock() != InValidSocket();
 	}
 
 	bool operator==(const SocketBase& other) const {
-		return sock == other.sock;
+		return sock() == other.sock();
 	}
 	bool operator!=(const SocketBase& other) const {
-		return sock != other.sock;
+		return sock() != other.sock();
 	}
 
 #ifdef _MSC_BUILD
@@ -314,7 +317,7 @@ public:
 		return WinSock::GetInstance().GetData();
 	}
 #endif // _MSC_BUILD
-	
+
 protected:
 
 	SocketBase* Copy(SocketBase* other) {
@@ -324,13 +327,11 @@ protected:
 		if (!IsValid()) {
 			Close();
 		}
-		sock = other->sock;
 		pfd = other->pfd;
 		other->Release();
 		return this;
 	}
 	void Release() {
-		sock = -1;
 		pfd.fd = -1;
 	}
 
@@ -343,7 +344,9 @@ protected:
 		return ret;
 	}
 
-	SocketBase(sock_t s) : sock(s) {}
+	SocketBase(sock_t s) {
+		pfd.fd = s;
+	}
 
 	static sock_t InValidSocket() {
 #ifdef _MSC_BUILD
@@ -353,10 +356,14 @@ protected:
 #endif
 	}
 
-	sock_t sock = InValidSocket();
-	poll_t pfd{};
+	sock_t& sock() {
+		return pfd.fd;
+	}
+	const sock_t& sock() const {
+		return pfd.fd;
+	}
 
-	constexpr static int int_size = sizeof(int);
+	poll_t pfd{};
 };
 
 /// <summary>
@@ -377,7 +384,7 @@ public:
 
 	template<class T>
 	using stdlayout = typename SocketTraits::stdlayout<T>;
-	
+
 	basic_TCPSocket() : sockbase() {}
 	basic_TCPSocket(typename sockbase::IPType addr) : basic_TCPSocket() {
 		Connect(addr);
@@ -392,7 +399,7 @@ public:
 	}
 
 	bool Connect(typename sockbase::IPType hostaddr, int timeout = 0) {
-		if (connect(sockbase::sock, hostaddr, sizeof(typename sockbase::IPType)) < 0) {
+		if (connect(sockbase::sock(), hostaddr, sizeof(typename sockbase::IPType)) < 0) {
 			dbg_print();
 			return false;
 		}
@@ -401,14 +408,14 @@ public:
 	int Available() {
 #ifdef _MSC_BUILD
 		u_long bytes = 0;
-		if (ioctlsocket(sockbase::sock, FIONREAD, &bytes) == SOCKET_ERROR) {
+		if (ioctlsocket(sockbase::sock(), FIONREAD, &bytes) == SOCKET_ERROR) {
 			dbg_print();
 			return -1;
 		}
 		return static_cast<int>(bytes);
 #else 
 		int bytes = 0;
-		if (ioctl(sockbase::sock, FIONREAD, &bytes) < 0) {
+		if (ioctl(sockbase::sock(), FIONREAD, &bytes) < 0) {
 			dbg_print();
 			return -1;
 		}
@@ -418,7 +425,7 @@ public:
 	std::optional<typename sockbase::IPType> GetPeerAddress() {
 		typename sockbase::IPType ret;
 		int addrlen = sizeof(ret);
-		if (getpeername(sockbase::sock, (sockaddr*)ret, &addrlen) != 0) {
+		if (getpeername(sockbase::sock(), (sockaddr*)ret, &addrlen) != 0) {
 			return std::nullopt;
 		}
 		return ret;
@@ -450,7 +457,7 @@ public:
 
 		if (sockbase::pfd.revents & POLLIN) {
 			char buf;
-			int r = recv(sockbase::sock, &buf, 1, MSG_PEEK);
+			int r = recv(sockbase::sock(), &buf, 1, MSG_PEEK);
 			if (r == 0) {
 				return true;
 			}
@@ -466,34 +473,34 @@ public:
 				}
 			}
 		}
-		
+
 		return false;
 	}
 	void _NonBlocking() {
 #ifdef _MSC_BUILD
 		u_long mode = 1;
-		ioctlsocket(sockbase::sock, FIONBIO, &mode);
+		ioctlsocket(sockbase::sock(), FIONBIO, &mode);
 #else
-		int flag = fcntl(sockbase::sock, F_GETFL, 0);
-		fcntl(sockbase::sock, F_SETFL, flag | O_NONBLOCK);
+		int flag = fcntl(sockbase::sock(), F_GETFL, 0);
+		fcntl(sockbase::sock(), F_SETFL, flag | O_NONBLOCK);
 #endif
 	}
 
 	bool RawSend(const void* src, int size) {
-		int ret = send(sockbase::sock, (const char*)src, size, 0);
+		int ret = send(sockbase::sock(), (const char*)src, size, 0);
 		return ret >= 0;
 	}
 	bool RawRecv(void* dest, int size) {
 		int received = 0;
 
 		while (received < size) {
-			int ret = recv(sockbase::sock, (char*)dest + received, size - received, 0);
+			int ret = recv(sockbase::sock(), (char*)dest + received, size - received, 0);
 			if (ret <= 0) return false;
 			received += ret;
 		}
 		return true;
 	}
-	
+
 	bool Send(const bytearray& src) {
 		return RawSend(src.data(), static_cast<int>(src.size()));
 	}
@@ -503,7 +510,7 @@ public:
 	}
 
 	bool Send(const Packet& src) {
-		if (src.Size() <= Packet::HeaderSize) {
+		if (src.CheckHeader()) {
 			return false;
 		}
 		return Send(src.GetBuffer());
@@ -524,23 +531,20 @@ public:
 
 	bool EncryptionSend(const bytearray& src) {
 		bytearray target;
-		Encrypt(src, target);
-		return Send(target);
+		return Encrypt(src, target) && Send(target);
 	}
 	bool EncryptionRecv(bytearray& dest) {
-		bool f = Recv(dest);
-		Decrypt(dest, dest);
-		return f;
+		return Recv(dest) && Decrypt(dest, dest);
 	}
 
 	bool EncryptionSend(const Packet& src) {
-		if (src.Size() <= Packet::HeaderSize) {
+		if (src.CheckHeader()) {
 			return false;
 		}
 		bytearray data(src.GetBuffer().begin() + Packet::HeaderSize, src.GetBuffer().end());
-		Encrypt(data, data);
+		bool flag = Encrypt(data, data);
 		Packet pak = Packet(src.GetHeader()->Type, data);
-		return Send(pak);
+		return flag && Send(pak);
 	}
 	std::optional<Packet> EncryptionRecv() {
 		bytearray head(Packet::HeaderSize);
@@ -550,10 +554,9 @@ public:
 		Packet pak;
 		pak = std::move(head);
 		bytearray data(pak.GetHeader()->Size);
-		if (!Recv(data)) {
+		if (!EncryptionRecv(data)) {
 			return std::nullopt;
 		}
-		Decrypt(data, data);
 		return Packet(pak.GetHeader()->Type, data);
 	}
 
@@ -609,7 +612,7 @@ public:
 	bool _Recv(stdlayout<T>& target) {
 		return RawRecv(&target, sizeof(T));
 	}
-	
+
 	template<class T>
 	std::future<bool> _ASyncSend(const stdlayout<T>& target) {
 		return std::async(std::launch::async, [this, target]() {
@@ -664,17 +667,17 @@ public:
 	}
 
 	bool Bind(typename sockbase::IPType addr) {
-		if (bind(sockbase::sock, addr, sizeof(typename sockbase::IPType)) < 0) {
+		if (bind(sockbase::sock(), addr, sizeof(typename sockbase::IPType)) < 0) {
 			dbg_print();
 			return false;
 		}
 		int opt = 1;
-		setsockopt(sockbase::sock, SOL_SOCKET, SO_REUSEADDR, (const char*)&opt, sizeof(int));
+		setsockopt(sockbase::sock(), SOL_SOCKET, SO_REUSEADDR, (const char*)&opt, sizeof(int));
 		return true;
 	}
 	bool Listen(uint16_t port, int backlog = 128) {
 		this->Bind(typename sockbase::IPType(port));
-		if (listen(sockbase::sock, backlog) != 0) {
+		if (listen(sockbase::sock(), backlog) != 0) {
 			dbg_print();
 			return false;
 		}
@@ -690,12 +693,11 @@ public:
 			return std::nullopt;
 		}
 
-		TCPSocket client = accept(sockbase::sock, nullptr, nullptr);
+		TCPSocket client = accept(sockbase::sock(), nullptr, nullptr);
 		if (!client.IsValid()) {
 			dbg_print();
 			return std::nullopt;
 		}
-		client.pfd.fd = client.sock;
 		client.pfd.events = POLLIN;
 		return client;
 	}
@@ -716,9 +718,16 @@ using TCPSocketV6 = basic_TCPSocket<IPv6Address>;
 using TCPServer = basic_TCPServer<IPAddress>;
 using TCPServerV6 = basic_TCPServer<IPv6Address>;
 
+#ifdef SOCKET_H_USE_NAMESPACE
+}
+#endif // SOCKET_H_USE_NAMESPACE
 
 #undef dbg_print
 #undef _last_error
+#undef SOCKET_H_USE_NAMESPACE
+
+
+
 
 // TODO:
 // 	Datagram (UDP) Protocol implement

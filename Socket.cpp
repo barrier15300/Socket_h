@@ -24,21 +24,22 @@ struct NotPOD {
 
 	std::vector<uint8_t> ToBytes() const {
 		std::vector<uint8_t> ret;
-		ret.insert(ret.end(), (uint8_t*)&v, (uint8_t*)&v + sizeof(int));
-		ret.insert(ret.end(), (uint8_t*)&f, (uint8_t*)&f + sizeof(float));
+		Packet::StoreBytes(ret, v);
+		Packet::StoreBytes(ret, f);
 		uint32_t len = s.size();
-		ret.insert(ret.end(), (uint8_t*)&len, (uint8_t*)&len + sizeof(uint32_t));
-		ret.insert(ret.end(), (uint8_t*)s.data(), (uint8_t*)s.data() + len);
+		Packet::StoreBytes(ret, len);
+		Packet::StoreBytes(ret, s.data(), len);
+		return ret;
 	}
 	
 	auto FromBytes(const std::vector<uint8_t>& src) {
 		auto it = src.begin();
-		std::copy(it, it += sizeof(int), (uint8_t*)&v);
-		std::copy(it, it += sizeof(float), (uint8_t*)&f);
+		Packet::LoadBytes(it, v);
+		Packet::LoadBytes(it, f);
 		uint32_t len = 0;
-		std::copy(it, it += sizeof(uint32_t), (uint8_t*)&len);
-		s.resize(len + 1);
-		std::copy(it, it += len, (uint8_t*)s.data());
+		Packet::LoadBytes(it, len);
+		s.resize(len);
+		Packet::LoadBytes(it, s.data(), len);
 		return it;
 	}
 };

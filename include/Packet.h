@@ -141,7 +141,7 @@ struct Packet {
 	Packet(const std::string& data) : Packet(Header::type_hash_code<std::string>(), data.data(), data.size()) {}
 	
 	template<class T>
-	Packet(size_t id, const T& data, stdlayout_d<T> dummy_0) : Packet(id, std::addressof(data), sizeof(T)) {}
+	Packet(size_t id, const T& data, stdlayout_d<T> dummy_0 = {}) : Packet(id, std::addressof(data), sizeof(T)) {}
 	template<class enumT, class T>
 	Packet(enumT type, const T& data, Header::enum32_t<enumT> dummy_0 = {}, stdlayout_d<T> dummy_1 = {}) : Packet(type, std::addressof(data), sizeof(T)) {}
 	template<class T>
@@ -268,12 +268,30 @@ struct Packet {
 		lastbyte_t i = ret.FromBytes(from);
 		return {ret, i};
 	}
+	
+	static void StoreBytes(buf_t& dest, const void* src, size_t size) {
+		dest.insert(dest.end(), static_cast<const uint8_t*>(src), static_cast<const uint8_t*>(src) + size);
+	}
 
-private:
+	template<class T, typename = stdlayout_d<T>>
+	static void StoreBytes(buf_t& dest, const T& src) {
+		StoreBytes(dest, &src, sizeof(T));
+	}
+
+	static void LoadBytes(buf_t::const_iterator& it, void* dest, size_t size) {
+		std::copy(it, it += size, static_cast<uint8_t*>(dest));
+	}
+
+	template<class T, typename = stdlayout_d<T>>
+	static void LoadBytes(buf_t::const_iterator& it, T& dest) {
+		LoadBytes(it, &dest, sizeof(T));
+	}
 
 	bool CheckHeader(size_t option = 1) const {
 		return m_buffer.size() < HeaderSize + option;
 	}
+
+private:
 
 	buf_t m_buffer{};
 

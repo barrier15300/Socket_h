@@ -7,6 +7,17 @@
 #include <optional>
 #include <cmath>
 
+static constexpr size_t _bit_width(uint64_t test) noexcept {
+	constexpr size_t bits = sizeof(size_t) * 8;
+	constexpr size_t testmask = size_t(1) << (bits - 1);
+	for (size_t i = 1; i < bits; ++i) {
+		if ((test << i) & testmask) {
+			return bits - i;
+		}
+	}
+	return bits;
+}
+
 class AES128 {
 
 #define _________ROR(v, s) (((v) >> (s)) | ((v) << (32 - s)))
@@ -18,8 +29,10 @@ public:
 	template<size_t keybytes>
 	using cbytearray = std::array<byte_t, keybytes>;
 	using bytearray = std::vector<byte_t>;
-
+	
 	static constexpr size_t block_size = 0x10;
+	static constexpr size_t block_size_mask = block_size - 1;
+	static constexpr size_t block_size_shift = _bit_width(block_size_mask);
 	static constexpr byte_t RCon[11] = {
 		0x8d,
 		0x01, 0x02, 0x04, 0x08, 0x10, 0x20, 0x40, 0x80, 0x1b, 0x36
@@ -354,10 +367,10 @@ public:
 	}
 
 	static bool BlockBaseCheck(size_t rawlength) noexcept {
-		return (rawlength & (16 - 1)) == 0;
+		return (rawlength & block_size_mask) == 0;
 	}
 	static size_t BlockLength(size_t rawlength) noexcept {
-		return (rawlength >> (int)std::log2(block_size)) + (bool)(rawlength & (block_size - 1));
+		return (rawlength >> block_size_shift) + (bool)(rawlength & block_size_mask);
 	}
 	static bytearray SizeAlloc(size_t rawlength) {
 		bytearray ret;
@@ -387,7 +400,7 @@ public:
 		size_t available = std::thread::hardware_concurrency();
 		std::vector<std::future<void>> tasks;
 		tasks.reserve(available);
-		size_t palc = std::ceil((double)size / available);
+		size_t palc = (size / available) + 1;
 
 		for (size_t i = 0; i < tasks.capacity(); ++i) {
 			size_t start = i * palc;
