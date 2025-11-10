@@ -96,6 +96,12 @@ struct Packet {
 	template<class T>
 	using from_byteable = from_byteable_d<T, T>;
 
+	template<class T>
+	using cross_convertable_d = from_byteable_d<to_byteable<T>>;
+
+	template<class T>
+	using cross_convertable = from_byteable<to_byteable<T>>;
+
 	Packet(const Packet&) = default;
 	Packet(Packet&&) = default;
 
@@ -149,17 +155,17 @@ struct Packet {
 	Packet(const std::vector<T>& data, stdlayout_d<T> dummy_0) : Packet(Header::type_hash_code<std::vector<T>>(), data.data(), data.size() * sizeof(T)) {}
 
 	template<class T>
-	Packet(size_t id, const T& data, to_byteable_d<T> dummy_0 = {}) {
+	Packet(size_t id, const T& data, cross_convertable_d<T> dummy_0 = {}) {
 		buf_t _data = data.ToBytes();
 		*this = Packet(id, _data.data(), _data.size());
 	}
 	template<class enumT, class T>
-	Packet(enumT type, const T& data, Header::enum32_t<enumT> dummy_0 = {}, to_byteable_d<T> dummy_1 = {}) : Packet(type, data) {}
+	Packet(enumT type, const T& data, Header::enum32_t<enumT> dummy_0 = {}, cross_convertable_d<T> dummy_1 = {}) : Packet(type, data) {}
 	template<class T>
-	Packet(const T& data, to_byteable_d<T> dummy_0 = {}) : Packet(Header::type_hash_code<T>(), data) {}
+	Packet(const T& data, cross_convertable_d<T> dummy_0 = {}) : Packet(Header::type_hash_code<T>(), data) {}
 
 	template<class T>
-	Packet(size_t id, const std::vector<T>& data, to_byteable<T> dummy_0 = {}) {
+	Packet(size_t id, const std::vector<T>& data, cross_convertable_d<T> dummy_0 = {}) {
 		buf_t b;
 		b.reserve(data.size() * sizeof(T));
 		for (auto&& elem : data) {
@@ -169,9 +175,9 @@ struct Packet {
 		*this = Packet(id, b.data(), b.size());
 	}
 	template<class enumT, class T>
-	Packet(enumT type, const std::vector<T>& data, Header::enum32_t<enumT> dummy_0 = {}, to_byteable<T> dummy_1 = {}) : Packet(static_cast<uint32_t>(type), data) {}
+	Packet(enumT type, const std::vector<T>& data, Header::enum32_t<enumT> dummy_0 = {}, cross_convertable_d<T> dummy_1 = {}) : Packet(static_cast<uint32_t>(type), data) {}
 	template<class T>
-	Packet(const std::vector<T>& data, to_byteable_d<T> dummy_0 = {}) : Packet(Header::type_hash_code<std::vector<T>>(), data) {}
+	Packet(const std::vector<T>& data, cross_convertable_d<T> dummy_0 = {}) : Packet(Header::type_hash_code<std::vector<T>>(), data) {}
 
 	explicit Packet(std::ifstream& ifs) {
 		std::istreambuf_iterator<std::ifstream::char_type> begin(ifs);

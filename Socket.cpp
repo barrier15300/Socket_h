@@ -12,6 +12,32 @@
 void Server();
 void Client();
 
+struct NotPOD {
+	int v{};
+	float f{};
+	std::string s;
+
+	std::vector<uint8_t> ToBytes() const {
+		std::vector<uint8_t> ret;
+		ret.insert(ret.end(), (uint8_t*)&v, (uint8_t*)&v + sizeof(int));
+		ret.insert(ret.end(), (uint8_t*)&f, (uint8_t*)&f + sizeof(float));
+		uint32_t len = s.size();
+		ret.insert(ret.end(), (uint8_t*)&len, (uint8_t*)&len + sizeof(uint32_t));
+		ret.insert(ret.end(), (uint8_t*)s.data(), (uint8_t*)s.data() + len);
+	}
+	
+	auto FromBytes(const std::vector<uint8_t>& src) {
+		auto it = src.begin();
+		std::copy(it, it += sizeof(int), &v);
+		std::copy(it, it += sizeof(float), &f);
+		uint32_t len = 0;
+		std::copy(it, it += sizeof(uint32_t), &len);
+		s.resize(len + 1);
+		std::copy(it, it += len, s.data());
+		return it;
+	}
+};
+
 int main(int argc, char* argv[]) {
 	
 	modint<4> mi(1, 7);
@@ -26,10 +52,10 @@ int main(int argc, char* argv[]) {
 	aes.Init(key);
 	aes.Initializer(iv);
 
+	NotPOD obj{};
+	Packet pak = Packet(obj);
 
 	size_t len = 1 << 7;
-
-	Packet pak = Packet(len);
 
 	std::string s = std::string(len, '\x55');
 	//std::string s = "In a quiet corner of the digital realm, streams of encrypted thoughts flow endlessly, guarded by elegant ciphers born of pure logic.";
