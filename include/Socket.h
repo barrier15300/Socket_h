@@ -422,7 +422,7 @@ public:
 		return bytes;
 #endif
 	}
-	std::optional<typename sockbase::IPType> GetPeerAddress() {
+	std::optional<typename sockbase::IPType> GetPeerAddress() const {
 		typename sockbase::IPType ret;
 		int addrlen = sizeof(ret);
 		if (getpeername(sockbase::sock(), (sockaddr*)ret, &addrlen) != 0) {
@@ -430,7 +430,7 @@ public:
 		}
 		return ret;
 	}
-	bool LostConnection() {
+	bool LostConnection() const {
 		int ret = sockbase::Poll(std::addressof(sockbase::pfd), 1, 0);
 
 		if (ret == 0) {
@@ -486,11 +486,11 @@ public:
 #endif
 	}
 
-	bool RawSend(const void* src, int size) {
+	bool RawSend(const void* src, int size) const {
 		int ret = send(sockbase::sock(), (const char*)src, size, 0);
 		return ret >= 0;
 	}
-	bool RawRecv(void* dest, int size) {
+	bool RawRecv(void* dest, int size) const {
 		int received = 0;
 
 		while (received < size) {
@@ -501,21 +501,21 @@ public:
 		return true;
 	}
 
-	bool Send(const bytearray& src) {
+	bool Send(const bytearray& src) const {
 		return RawSend(src.data(), static_cast<int>(src.size()));
 	}
-	bool Recv(bytearray& dest) {
+	bool Recv(bytearray& dest) const {
 		if (dest.empty()) { return false; }
 		return RawRecv(dest.data(), static_cast<int>(dest.size()));
 	}
 
-	bool Send(const Packet& src) {
+	bool Send(const Packet& src) const {
 		if (src.CheckHeader()) {
 			return false;
 		}
 		return Send(src.GetBuffer());
 	}
-	std::optional<Packet> Recv() {
+	std::optional<Packet> Recv() const {
 		bytearray head(Packet::HeaderSize);
 		if (!Recv(head)) {
 			return std::nullopt;
@@ -529,15 +529,15 @@ public:
 		return Packet(pak.GetHeader()->Type, data);
 	}
 
-	bool EncryptionSend(const bytearray& src) {
+	bool EncryptionSend(const bytearray& src) const {
 		bytearray target;
 		return Encrypt(src, target) && Send(target);
 	}
-	bool EncryptionRecv(bytearray& dest) {
+	bool EncryptionRecv(bytearray& dest) const {
 		return Recv(dest) && Decrypt(dest, dest);
 	}
 
-	bool EncryptionSend(const Packet& src) {
+	bool EncryptionSend(const Packet& src) const {
 		if (src.CheckHeader()) {
 			return false;
 		}
@@ -546,7 +546,7 @@ public:
 		Packet pak = Packet(src.GetHeader()->Type, data);
 		return flag && Send(pak);
 	}
-	std::optional<Packet> EncryptionRecv() {
+	std::optional<Packet> EncryptionRecv() const {
 		bytearray head(Packet::HeaderSize);
 		if (!Recv(head)) {
 			return std::nullopt;
@@ -560,67 +560,67 @@ public:
 		return Packet(pak.GetHeader()->Type, data);
 	}
 
-	std::future<bool> ASyncSend(const bytearray& src) {
+	std::future<bool> ASyncSend(const bytearray& src) const {
 		return std::async(std::launch::async, [&]() {
 			return this->Send(src);
 		});
 	}
-	std::future<bool> ASyncRecv(bytearray& dest) {
+	std::future<bool> ASyncRecv(bytearray& dest) const {
 		return std::async(std::launch::async, [&]() {
 			return this->Recv(dest);
 		});
 	}
 
-	std::future<bool> ASyncSend(const Packet& src) {
+	std::future<bool> ASyncSend(const Packet& src) const {
 		return std::async(std::launch::async, [&]() {
 			return this->Send(src);
 		});
 	}
-	std::future<std::optional<Packet>> ASyncRecv() {
+	std::future<std::optional<Packet>> ASyncRecv() const {
 		return std::async(std::launch::async, [&]() {
 			return this->Recv();
 		});
 	}
 
-	std::future<bool> ASyncEncryptionSend(const bytearray& src) {
+	std::future<bool> ASyncEncryptionSend(const bytearray& src) const {
 		return std::async(std::launch::async, [&]() {
 			return this->EncryptionSend(src);
 		});
 	}
-	std::future<bool> ASyncEncryptionRecv(bytearray& dest) {
+	std::future<bool> ASyncEncryptionRecv(bytearray& dest) const {
 		return std::async(std::launch::async, [&]() {
 			return this->EncryptionRecv(dest);
 		});
 	}
 
-	std::future<bool> ASyncEncryptionSend(const Packet& src) {
+	std::future<bool> ASyncEncryptionSend(const Packet& src) const {
 		return std::async(std::launch::async, [&]() {
 			return this->EncryptionSend(src);
 		});
 	}
-	std::future<std::optional<Packet>> ASyncEncryptionRecv() {
+	std::future<std::optional<Packet>> ASyncEncryptionRecv() const {
 		return std::async(std::launch::async, [&]() {
 			return this->EncryptionRecv();
 		});
 	}
 
 	template<class T>
-	bool _Send(const stdlayout<T>& target) {
+	bool _Send(const stdlayout<T>& target) const {
 		return RawSend(&target, sizeof(T));
 	}
 	template<class T>
-	bool _Recv(stdlayout<T>& target) {
+	bool _Recv(stdlayout<T>& target) const {
 		return RawRecv(&target, sizeof(T));
 	}
 
 	template<class T>
-	std::future<bool> _ASyncSend(const stdlayout<T>& target) {
+	std::future<bool> _ASyncSend(const stdlayout<T>& target) const {
 		return std::async(std::launch::async, [this, target]() {
 			return this->_Send<T>(target);
 		});
 	}
 	template<class T>
-	std::future<bool> _ASyncRecv(stdlayout<T>& target) {
+	std::future<bool> _ASyncRecv(stdlayout<T>& target) const {
 		return std::async(std::launch::async, [this, &target]() {
 			return this->_Recv<T>(target);
 		});
@@ -630,13 +630,13 @@ public:
 
 protected:
 
-	bool Crypt(const std::vector<uint8_t>& src, std::vector<uint8_t>& dest, typename AES128::cryptmode_t mode) {
+	bool Crypt(const std::vector<uint8_t>& src, std::vector<uint8_t>& dest, typename AES128::cryptmode_t mode) const {
 		return ((&CryptEngine)->*mode)(src, dest, src.size());
 	}
-	bool Encrypt(const std::vector<uint8_t>& src, std::vector<uint8_t>& dest) {
+	bool Encrypt(const std::vector<uint8_t>& src, std::vector<uint8_t>& dest) const {
 		return Crypt(src, dest, &AES128::CTREncrypt);
 	}
-	bool Decrypt(const std::vector<uint8_t>& src, std::vector<uint8_t>& dest) {
+	bool Decrypt(const std::vector<uint8_t>& src, std::vector<uint8_t>& dest) const {
 		return Crypt(src, dest, &AES128::CTRDecrypt);
 	}
 
