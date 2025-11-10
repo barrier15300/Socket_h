@@ -12,6 +12,11 @@
 void Server();
 void Client();
 
+struct POD {
+	int v{};
+	float f{};
+};
+
 struct NotPOD {
 	int v{};
 	float f{};
@@ -28,12 +33,12 @@ struct NotPOD {
 	
 	auto FromBytes(const std::vector<uint8_t>& src) {
 		auto it = src.begin();
-		std::copy(it, it += sizeof(int), &v);
-		std::copy(it, it += sizeof(float), &f);
+		std::copy(it, it += sizeof(int), (uint8_t*)&v);
+		std::copy(it, it += sizeof(float), (uint8_t*)&f);
 		uint32_t len = 0;
-		std::copy(it, it += sizeof(uint32_t), &len);
+		std::copy(it, it += sizeof(uint32_t), (uint8_t*)&len);
 		s.resize(len + 1);
-		std::copy(it, it += len, s.data());
+		std::copy(it, it += len, (uint8_t*)s.data());
 		return it;
 	}
 };
@@ -52,8 +57,11 @@ int main(int argc, char* argv[]) {
 	aes.Init(key);
 	aes.Initializer(iv);
 
-	NotPOD obj{};
-	Packet pak = Packet(obj);
+	Packet pak;
+	POD PODobj{};
+	NotPOD notPODobj{};
+	pak = Packet(PODobj);
+	pak = Packet(notPODobj);
 
 	size_t len = 1 << 7;
 
