@@ -76,31 +76,35 @@ struct Packet {
 	static constexpr size_t HeaderSize = sizeof(Header);
 
 	using buf_t = std::vector<uint8_t>;
-	template<class T, class dummyT = std::nullptr_t>
-	using stdlayout_d = std::enable_if_t<std::is_standard_layout_v<T>, dummyT>;
+
+	using sentinelbyte_t = decltype(std::declval<const buf_t>().end());
 
 	template<class T, class dummyT = std::nullptr_t>
 	using to_byteable_d = std::enable_if_t<std::is_same<decltype(std::declval<T>().ToBytes()), buf_t>::value, dummyT>;
-	
-	using lastbyte_t = decltype(std::declval<const buf_t>().end());
-
-	template<class T, class dummyT = std::nullptr_t>
-	using from_byteable_d = std::enable_if_t<std::is_same<decltype(std::declval<T>().FromBytes(std::declval<buf_t>())), lastbyte_t>::value, dummyT>;
-
-	template<class T>
-	using stdlayout = stdlayout_d<T, T>;
-	
 	template<class T>
 	using to_byteable = to_byteable_d<T, T>;
 	
+	template<class T, class dummyT = std::nullptr_t>
+	using from_byteable_d = std::enable_if_t<std::is_same<decltype(std::declval<T>().FromBytes(std::declval<buf_t>())), lastbyte_t>::value, dummyT>;
 	template<class T>
 	using from_byteable = from_byteable_d<T, T>;
 
 	template<class T>
 	using cross_convertable_d = from_byteable_d<to_byteable<T>>;
-
 	template<class T>
 	using cross_convertable = from_byteable<to_byteable<T>>;
+
+	template<class, class = void>
+	struct is_cross_convertable : std::false_type {};
+	template<class T>
+	struct is_cross_convertable<T, std::void_t<cross_convertable_d<T>>> : std::true_type {};
+
+	template<class T, class dummyT = std::nullptr_t>
+	using stdlayout_d = std::enable_if_t<std::is_standard_layout_v<T> && !is_cross_convertable<T>::value, dummyT>;
+	template<class T>
+	using stdlayout = stdlayout_d<T, T>;
+	
+
 
 	Packet(const Packet&) = default;
 	Packet(Packet&&) = default;
