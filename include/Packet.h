@@ -102,6 +102,16 @@ struct Packet {
 	template<class T, class dummyT = std::nullptr_t>
 	using stdlayout_d = std::enable_if_t<std::is_standard_layout_v<T> && !is_cross_convertable<T>::value, dummyT>;
 	template<class T>
+	using cross_convertable = from_byteable<to_byteable<T>>;
+
+	template<class, class = void>
+	struct is_cross_convertable : std::false_type {};
+	template<class T>
+	struct is_cross_convertable<T, std::void_t<cross_convertable_d<T>>> : std::true_type {};
+
+	template<class T, class dummyT = std::nullptr_t>
+	using stdlayout_d = std::enable_if_t<std::is_standard_layout_v<T> && !is_cross_convertable<T>::value, dummyT>;
+	template<class T>
 	using stdlayout = stdlayout_d<T, T>;
 
 	Packet(const Packet&) = default;
