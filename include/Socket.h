@@ -521,7 +521,7 @@ public:
 			return std::nullopt;
 		}
 		Packet pak;
-		pak = std::move(head);
+		pak.SetBuffer(std::move(head));
 		bytearray data(pak.GetHeader()->Size);
 		if (!Recv(data)) {
 			return std::nullopt;
@@ -552,7 +552,7 @@ public:
 			return std::nullopt;
 		}
 		Packet pak;
-		pak = std::move(head);
+		pak.SetBuffer(std::move(head));
 		bytearray data(pak.GetHeader()->Size);
 		if (!EncryptionRecv(data)) {
 			return std::nullopt;

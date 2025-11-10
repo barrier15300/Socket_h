@@ -5,101 +5,73 @@
 #include <iomanip>
 #include <chrono>
 
-#include "include/Socket.h"
 #include "include/MultiWordInt.h"
 #include "include/ModInt.h"
+
+
+#include "include/Socket.h"
 
 void Server();
 void Client();
 
-struct POD {
-	int v{};
-	float f{};
-};
+struct ClientData {
 
-struct NotPOD {
-	int v{};
-	float f{};
-	std::string s;
+	int Level = 0;
+	std::string Name = "NoName";
 
-	std::vector<uint8_t> ToBytes() const {
-		std::vector<uint8_t> ret;
-		Packet::StoreBytes(ret, v);
-		Packet::StoreBytes(ret, f);
-		uint32_t len = s.size();
+	Packet::buf_t ToBytes() const {
+		Packet::buf_t ret;
+		Packet::StoreBytes(ret, Level);
+		uint32_t len = Name.size();
 		Packet::StoreBytes(ret, len);
-		Packet::StoreBytes(ret, s.data(), len);
+		Packet::StoreBytes(ret, Name.data(), len);
 		return ret;
 	}
-	
-	auto FromBytes(const std::vector<uint8_t>& src) {
-		auto it = src.begin();
-		Packet::LoadBytes(it, v);
-		Packet::LoadBytes(it, f);
+
+	Packet::sentinelbyte_t FromBytes(const Packet::buf_t& src) {
+		Packet::sentinelbyte_t it = src.begin();
+		Packet::LoadBytes(it, Level);
 		uint32_t len = 0;
 		Packet::LoadBytes(it, len);
-		s.resize(len);
-		Packet::LoadBytes(it, s.data(), len);
+		Name.resize(len);
+		Packet::LoadBytes(it, Name.data(), len);
 		return it;
 	}
 };
 
+struct StatusData {
+
+	int stat = 0;
+	int val = 0;
+
+};
+
+
 int main(int argc, char* argv[]) {
 	
-	modint<4> mi(1, 7);
+	std::vector<std::string> args;
+	args.insert(args.end(), argv, argv + argc);
 
-	AES128 aes;
-	
-	AES128::cbytearray<16> key{};
-	AES128::cbytearray<16> iv{};
-
-	std::fill(iv.begin(), iv.end(), '\xaa');
-
-	aes.Init(key);
-	aes.Initializer(iv);
-
-	Packet pak;
-	POD PODobj{};
-	NotPOD notPODobj{};
-	pak = Packet(PODobj);
-	pak = Packet(notPODobj);
-
-	size_t len = 1 << 7;
-
-	std::string s = std::string(len, '\x55');
-	//std::string s = "In a quiet corner of the digital realm, streams of encrypted thoughts flow endlessly, guarded by elegant ciphers born of pure logic.";
-	AES128::bytearray message{s.begin(), s.end()};
-	
-	auto chip = aes.CBCEncrypt(message);
-
-	if (chip) {
-		for (auto b : *chip) {
-			std::cout << std::setw(2) << std::setfill('0') << std::hex << std::right << std::uppercase << (int)b;
-		}
-		std::cout << std::endl << std::endl;
-	}
-	else {
+	if (args.size() <= 1) {
 		return -1;
 	}
-	
-	auto p = aes.CBCDecrypt(*chip);
 
-	if (p) {
-		for (auto b : *p) {
-			std::cout << std::setw(2) << std::setfill('0') << std::hex << std::right << std::uppercase << (int)b;
-		}
-		std::cout << std::endl << std::endl;
+	if (std::stoi(args[1]) == 0) {
+		Server();
 	}
-
+	else {
+		Client();
+	}
+	
 	return 0;
 }
 
 void Server() {
 
-	TCPServerV6 server(8080);
+	TCPServer server(8080);
 
-	std::vector<TCPSocketV6> clients;
-	std::deque<TCPSocketV6*> lostqueue;
+	std::vector<TCPSocket> clients;
+	std::deque<TCPSocket*> lostqueue;
 
 	while (true) {
 		auto sock = server.Accept();
@@ -124,31 +96,33 @@ void Server() {
 		}
 
 		for (auto&& c : clients) {
-			
+
 			int available = c.Available();
-			int val = 0;
-			
-			if (available > 0) {
-				c._Recv<int>(val);
-				auto address = c.GetPeerAddress();
-				std::cout << "recived from (";
-				if (address) {
-					std::cout << address->Address();
-				}
-				std::cout << "):" << val << std::endl;
-				
-				++val;
-				c._Send<int>(val);
+
+			if (available <= 0) {
+				continue;
 			}
+
+			std::string val;
+			val = *c.Recv()->Get<std::string>();
+			auto address = c.GetPeerAddress();
+			std::cout << "recived from (";
+			if (address) {
+				std::cout << address->Address();
+			}
+			std::cout << "):" << val << std::endl;
+
+			std::rotate(val.begin(), val.begin() + 1, val.end());
+			c.Send(val);
 		}
 	}
 }
 
 void Client() {
 
-	TCPSocketV6 server;
+	TCPSocket server;
 
-	if (server.Connect(IPv6Address::Loopback().Port(8080))) {
+	if (server.Connect(IPAddress::Loopback().Port(8080))) {
 		std::cout << "connected server." << std::endl;
 	}
 	else {
@@ -161,17 +135,15 @@ void Client() {
 			break;
 		}
 		
-		int available = server.Available();
-		int reciveval = 0;
-
-		int sendval = 0;
+		std::string reciveval;
+		std::string sendval;
 
 		std::cout << "input sendval: ";
 		std::cin >> sendval;
 
-		server._Send<int>(sendval);
+		server.Send(sendval);
 
-		server._Recv<int>(reciveval);
+		reciveval = *server.Recv()->Get<std::string>();
 		std::cout << "recived from server:" << reciveval << std::endl;
 	}
 }

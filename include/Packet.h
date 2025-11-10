@@ -111,8 +111,10 @@ struct Packet {
 	Packet& operator=(Packet&&) = default;
 
 	Packet() {};
-	//Packet(buf_t&& from) { m_buffer = std::move(from); }
-	//Packet& operator=(buf_t&& from) { m_buffer = std::move(from); }
+	Packet(const buf_t&) = delete;
+	Packet(buf_t&&) = delete;
+	Packet& operator=(const buf_t&) = delete;
+	Packet& operator=(buf_t&&) = delete;
 
 	Packet(uint32_t hash, const void* src, uint32_t size) {
 		Header head(hash);
@@ -128,7 +130,6 @@ struct Packet {
 	Packet(size_t id, const std::vector<uint8_t>& data) : Packet(id, data.data(), data.size()) {}
 	template<class enumT>
 	Packet(Header::enum32_t<enumT> type, const std::vector<uint8_t>& data) : Packet(type, data.data(), data.size()) {}
-	Packet(const std::vector<uint8_t>& data) : Packet(Header::type_hash_code<std::vector<uint8_t>>(), data.data(), data.size()) {}
 	
 	template<size_t len>
 	Packet(size_t id, const char(&data)[len]) : Packet(id, std::addressof(data), len - 1) {}
@@ -193,6 +194,10 @@ struct Packet {
 	size_t Size() const { return m_buffer.size(); }
 
 	const buf_t& GetBuffer() const { return m_buffer; }
+	Packet& SetBuffer(buf_t&& src) {
+		m_buffer = std::move(src);
+		return *this;
+	}
 
 	std::optional<Header> GetHeader() const {
 		if (CheckHeader(0)) {
