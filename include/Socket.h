@@ -161,6 +161,13 @@ struct IPAddressBase {
 		return static_cast<int>(addr->sa_family);
 	}
 
+	friend bool operator==(const IPAddressBase& lhs, const IPAddressBase& rhs) { return lhs.Address() == rhs.Address(); }
+	friend bool operator!=(const IPAddressBase& lhs, const IPAddressBase& rhs) { return lhs.Address() != rhs.Address(); }
+	friend bool operator<(const IPAddressBase& lhs, const IPAddressBase& rhs) { return lhs.Address() < rhs.Address(); }
+	friend bool operator<=(const IPAddressBase& lhs, const IPAddressBase& rhs) { return lhs.Address() <= rhs.Address(); }
+	friend bool operator>(const IPAddressBase& lhs, const IPAddressBase& rhs) { return lhs.Address() > rhs.Address(); }
+	friend bool operator>=(const IPAddressBase& lhs, const IPAddressBase& rhs) { return lhs.Address() >= rhs.Address(); }
+	
 	static IPAddressBase Any() {
 		return
 			(IsIPv4 ? IPAddressBase("0.0.0.0") :
@@ -280,7 +287,6 @@ public:
 	SocketBase(SocketBase&& other) noexcept {
 		*this = std::move(other);
 	}
-
 	SocketBase& operator=(const SocketBase&) = delete;
 	SocketBase& operator=(SocketBase&& other) noexcept {
 		return *Copy(&other);
@@ -305,11 +311,11 @@ public:
 		return sock() != InValidSocket();
 	}
 
-	bool operator==(const SocketBase& other) const {
-		return sock() == other.sock();
+	friend bool operator==(const SocketBase& lhs, const SocketBase& rhs) {
+		return lhs.sock() == rhs.sock();
 	}
-	bool operator!=(const SocketBase& other) const {
-		return sock() != other.sock();
+	friend bool operator!=(const SocketBase& lhs, const SocketBase& rhs) {
+		return lhs.sock() != rhs.sock();
 	}
 
 #ifdef _MSC_BUILD
@@ -422,7 +428,7 @@ public:
 		return bytes;
 #endif
 	}
-	std::optional<typename sockbase::IPType> GetPeerAddress() const {
+	std::optional<typename sockbase::IPType> GetPeerAddress() {
 		typename sockbase::IPType ret;
 		int addrlen = sizeof(ret);
 		if (getpeername(sockbase::sock(), (sockaddr*)ret, &addrlen) != 0) {
@@ -430,7 +436,7 @@ public:
 		}
 		return ret;
 	}
-	bool LostConnection() const {
+	bool LostConnection() {
 		int ret = sockbase::Poll(std::addressof(sockbase::pfd), 1, 0);
 
 		if (ret == 0) {

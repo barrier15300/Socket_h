@@ -286,7 +286,8 @@ struct Packet {
 	}
 
 	static void LoadBytes(buf_t::const_iterator& it, void* dest, size_t size) {
-		std::copy(it, it += size, static_cast<uint8_t*>(dest));
+		std::copy(it, it + size, static_cast<uint8_t*>(dest));
+		it += size;
 	}
 
 	template<class T, typename = memcpy_able_d<T>>

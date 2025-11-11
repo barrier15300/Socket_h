@@ -4,6 +4,7 @@
 #include <deque>
 #include <iomanip>
 #include <chrono>
+#include <map>
 
 // #include "include/MultiWordInt.h"
 // #include "include/ModInt.h"
@@ -27,7 +28,7 @@ struct ClientData {
 		Packet::StoreBytes(ret, Name.data(), len);
 		return ret;
 	}
-
+	
 	Packet::sentinelbyte_t FromBytes(const Packet::buf_t& src) {
 		Packet::sentinelbyte_t it = src.begin();
 		Packet::LoadBytes(it, Level);
@@ -70,21 +71,52 @@ void Server() {
 
 	TCPServer server(8080);
 
-	std::unordered_map<TCPSocket, ClientData> clients;
+	std::map<IPAddress, std::pair<TCPSocket, ClientData>> clients;
+	std::vector<std::optional<TCPSocket>> joinqueue;
 	std::deque<TCPSocket*> lostqueue;
 
 	while (true) {
 		auto sock = server.Accept();
 
 		if (sock) {
-			std::cout << "connected: " << sock->GetPeerAddress()->Address() << std::endl;
-			clients.push_back(std::move(*sock));
+			bool emptyfound = false;
+			for (auto&& state : joinqueue) {
+				if (!state) {
+					state = std::move(*sock);
+					emptyfound = true;
+					break;
+				}
+			}
+			if (!emptyfound) {
+				joinqueue.push_back(std::move(*sock));
+			}
 		}
 
-		for (auto&& c : clients) {
+		for (auto&& [_, pair] : clients) {
+			auto&& [c, cd] = pair;
 			if (c.LostConnection()) {
 				lostqueue.push_back(&c);
-				std::cout << "lost connection: " << c.GetPeerAddress()->Address() << std::endl;
+				std::cout << "lost connection: " << cd.Name << std::endl;
+			}
+		}
+
+		for (auto&& c : joinqueue) {
+
+			if (!c) {
+				continue;
+			}
+
+			if (c->Available() <= 0) {
+				continue;
+			}
+
+			auto cd = c->Recv()->Get<ClientData>();
+
+			if (cd) {
+				std::cout << "connected: " << cd->Name << std::endl;
+				auto addr = c->GetPeerAddress();
+				clients[*addr] = {std::move(*c), std::move(*cd)};
+				c = std::nullopt;
 			}
 		}
 
@@ -92,28 +124,35 @@ void Server() {
 			auto p = lostqueue.front();
 			lostqueue.pop_front();
 
-			clients.erase(std::remove(clients.begin(), clients.end(), *p), clients.end());
+			clients.erase(*p->GetPeerAddress());
 		}
 
-		for (auto&& [sock, client] : clients) {
+		for (auto&& [_, pair] : clients) {
+			auto&& [c, cd] = pair;
 
-			int available = sock.Available();
+			int available = c.Available();
 
 			if (available <= 0) {
 				continue;
 			}
 
-			std::string val;
-			val = *c.Recv()->Get<std::string>();
-			auto address = c.GetPeerAddress();
-			std::cout << "recived from (";
-			if (address) {
-				std::cout << address->Address();
-			}
-			std::cout << "):" << val << std::endl;
+			auto val = c.Recv();
 
-			std::rotate(val.begin(), val.begin() + 1, val.end());
-			c.Send(val);
+			if (!val) {
+				continue;
+			}
+
+			std::string send = cd.Name + "(" + std::to_string(cd.Level) + "): " + *val->Get<std::string>();
+
+			std::cout << send << std::endl;
+
+			for (auto&& [_, topair] : clients) {
+				auto&& [oc, _] = topair;
+				if (oc == c) {
+					continue;
+				}
+				oc.Send(send);
+			}
 		}
 	}
 }
@@ -131,30 +170,58 @@ void Client() {
 	}
 
 	ClientData _data;
-
+	
+	std::cout << "input your Level\n";
 	std::cin >> _data.Level;
+	std::cout << "input your Name\n";
 	std::cin >> _data.Name;
 
 	Packet p = Packet(_data);
 
 	server.Send(p);
 
-	while (true) {
+	bool stopflag = false;
+
+	std::mutex mtx;
+
+	std::thread inputthread = std::thread{
+		[&] {
+		while (!stopflag) {
+			std::string sendval;
+			std::cin >> sendval;
+			
+			if (sendval == "/exit") {
+				stopflag = true;
+				break;
+			}
+
+			std::lock_guard<std::mutex> lock(mtx);
+
+			Packet pak = Packet(sendval);
+			server.Send(sendval);
+		}
+	}
+	};
+
+	while (!stopflag) {
+
 		if (server.LostConnection()) {
 			break;
 		}
 		
-		std::string reciveval;
-		std::string sendval;
+		auto pak = server.Recv();
+		
+		if (!pak) {
+			continue;
+		}
 
-		std::cout << "input sendval: ";
-		std::cin >> sendval;
+		std::lock_guard<std::mutex> lock(mtx);
 
-		Packet pak = Packet(sendval);
-		server.Send(sendval);
-
-		pak = *server.Recv();
-		reciveval = *pak.Get<std::string>();
-		std::cout << "recived from server:" << reciveval << std::endl;
+		auto val = *pak->Get<std::string>();
+		std::cout << val << std::endl;
 	}
+
+	stopflag = true;
+
+	inputthread.join();
 }
