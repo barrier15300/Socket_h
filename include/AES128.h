@@ -6,6 +6,7 @@
 #include <memory>
 #include <optional>
 #include <cmath>
+#include <cstring>
 
 static constexpr size_t _bit_width(uint64_t test) noexcept {
 	constexpr size_t bits = sizeof(size_t) * 8;

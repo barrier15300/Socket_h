@@ -6,6 +6,7 @@
 #include <exception>
 #include <stdexcept>
 #include <fstream>
+#include <cstring>
 
 /// <summary>
 /// Header in Packet

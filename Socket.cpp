@@ -147,7 +147,7 @@ void Server() {
 			std::cout << send << std::endl;
 
 			for (auto&& [_, topair] : clients) {
-				auto&& [oc, _] = topair;
+				auto&& [oc, __] = topair;
 				if (oc == c) {
 					continue;
 				}

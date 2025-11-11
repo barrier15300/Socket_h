@@ -8,13 +8,13 @@
 #pragma comment(lib,"ws2_32.lib")
 #endif // _WINDOWS_
 #else
-#include <sys/socket.h>
-#include <asm-generic/poll.h>
-#include <sys/endian.h>
+#include <arpa/inet.h>
 #include <sys/ioctl.h>
 #include <unistd.h>
 #include <netinet/in.h>
 #include <netdb.h>
+#include <fcntl.h>
+#include <poll.h>
 #endif // _MSC_BUILD
 
 #include <string>
@@ -24,6 +24,7 @@
 #include <future>
 #include <vector>
 #include <iostream>
+#include <cstring>
 
 #ifdef SOCKET_H_USE_NAMESPACE
 namespace NetIO {
@@ -430,7 +431,7 @@ public:
 	}
 	std::optional<typename sockbase::IPType> GetPeerAddress() {
 		typename sockbase::IPType ret;
-		int addrlen = sizeof(ret);
+		socklen_t addrlen = sizeof(ret);
 		if (getpeername(sockbase::sock(), (sockaddr*)ret, &addrlen) != 0) {
 			return std::nullopt;
 		}
