@@ -163,10 +163,7 @@ void Client() {
 
 	std::cout << "input connect server address" << std::endl;
 	std::string str_addr;
-	std::cin >> std::quoted(str_addr);
-	std::cout << "input connect server address" << std::endl;
-	unsigned short port;
-	std::cin >> port;
+	std::cin >> str_addr;
 
 	auto op_addr = IPAddress::SolveHostName(str_addr);
 
@@ -174,6 +171,10 @@ void Client() {
 		std::cout << "can't solved address" << std::endl;
 		return;
 	}
+
+	std::cout << "input port" << std::endl;
+	unsigned short port;
+	std::cin >> port;
 
 	if (server.Connect(op_addr->Port(port))) {
 		std::cout << "connected server." << std::endl;
