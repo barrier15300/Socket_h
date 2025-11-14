@@ -247,7 +247,7 @@ struct SocketTraits {
 	using bytearray = std::vector<uint8_t>;
 
 	template<class T>
-	using stdlayout = std::enable_if_t<std::is_standard_layout<T>::value, T>;
+	using memcpyable = std::enable_if_t<std::is_trivially_copyable<T>::value, T>;
 
 };
 
@@ -390,7 +390,7 @@ public:
 	using bytearray = typename SocketTraits::bytearray;
 
 	template<class T>
-	using stdlayout = typename SocketTraits::stdlayout<T>;
+	using stdlayout = typename SocketTraits::memcpyable<T>;
 
 	basic_TCPSocket() : sockbase() {}
 	basic_TCPSocket(typename sockbase::IPType addr) : basic_TCPSocket() {
@@ -538,10 +538,10 @@ public:
 
 	bool EncryptionSend(const bytearray& src) const {
 		bytearray target;
-		return Encrypt(src, target) && Send(target);
+		return CryptEngine.IsInit() && Encrypt(src, target) && Send(target);
 	}
 	bool EncryptionRecv(bytearray& dest) const {
-		return Recv(dest) && Decrypt(dest, dest);
+		return CryptEngine.IsInit() && Recv(dest) && Decrypt(dest, dest);
 	}
 
 	bool EncryptionSend(const Packet& src) const {
