@@ -97,40 +97,24 @@ struct ContainerInVariable {
 	}
 };
 
+
 int main(int argc, char* argv[]) {
 	
 	// arg[1]{ 0 = server, 1 = client }
-
-	//ContainerInContainer elem;
-	//
-	//elem.names.push_back("test1");
-	//elem.names.push_back("test2");
-	//elem.names.push_back("test3");
-	//elem.names.push_back("test4");
-	//
-	//ContainerInVariable v;
-	//v.container.push_back(elem);
-	//v.container.push_back(elem);
-	//v.container.push_back(elem);
-	//v.container.push_back(elem);
-	//
-	//Packet pak = Packet(v);
-	//
-	//ContainerInVariable ret = *pak.Get<ContainerInVariable>();
-
-	std::vector<std::string> args;
-	args.insert(args.end(), argv, argv + argc);
 	
-	if (args.size() <= 1) {
-		return -1;
-	}
-	
-	if (std::stoi(args[1]) == 0) {
-		Server();
-	}
-	else {
-		Client();
-	}
+	//std::vector<std::string> args;
+	//args.insert(args.end(), argv, argv + argc);
+	//
+	//if (args.size() <= 1) {
+	//	return -1;
+	//}
+	//
+	//if (std::stoi(args[1]) == 0) {
+	//	Server();
+	//}
+	//else {
+	//	Client();
+	//}
 	
 	return 0;
 }
@@ -228,8 +212,6 @@ void Server() {
 void Client() {
 
 	TCPSocket server;
-
-	
 
 	std::cout << "input connect server address" << std::endl;
 	std::string str_addr;
