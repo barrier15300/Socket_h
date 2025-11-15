@@ -317,6 +317,29 @@ struct Packet {
 		StoreBytes(dest, data.data(), data.size());
 	}
 
+	template<class T>
+	static void StoreBytes(buf_t& dest, const std::vector<T>& src, memcpy_able_d<T> dummy_0 = {}) {
+		uint32_t size = src.size();
+		StoreBytes(dest, size);
+		StoreBytes(dest, src.data(), sizeof(T) * size);
+	}
+
+	template<class T>
+	static void StoreBytes(buf_t& dest, const std::vector<T>& src, cross_convertible_d<T> dummy_0 = {}) {
+		uint32_t size = src.size();
+		StoreBytes(dest, size);
+		for (auto&& elem : src) {
+			buf_t data = Convert<T>(elem);
+			StoreBytes(dest, data.data(), data.size());
+		}
+	}
+
+	static void StoreBytes(buf_t& dest, const std::string& src) {
+		uint32_t size = src.size();
+		StoreBytes(dest, size);
+		StoreBytes(dest, src.data(), src.size());
+	}
+
 	static void LoadBytes(byte_view& view, void* dest, uint32_t size) {
 		std::copy(view._beg, view._beg + size, static_cast<uint8_t*>(dest));
 		view._beg += size;
@@ -332,6 +355,34 @@ struct Packet {
 		auto&& [ret, last] = Convert<T>(view);
 		dest = std::move(ret);
 		view._beg = last._beg;
+	}
+
+	template<class T>
+	static void LoadBytes(byte_view& view, std::vector<T>& dest, memcpy_able_d<T> dummy_0 = {}) {
+		uint32_t size = 0;
+		LoadBytes(view, size);
+		dest.resize(size);
+		LoadBytes(view, dest.data(), sizeof(T) * size);
+	}
+
+	template<class T>
+	static void LoadBytes(byte_view& view, std::vector<T>& dest, cross_convertible_d<T> dummy_0 = {}) {
+		uint32_t size = 0;
+		LoadBytes(view, size);
+		dest.clear();
+		dest.reserve(size);
+		for (size_t i = 0; i < size; ++i) {
+			auto&& [ret, last] = Convert<T>(view);
+			dest.push_back(std::move(ret));
+			view._beg = last._beg;
+		}
+	}
+
+	static void LoadBytes(byte_view& view, std::string& dest) {
+		uint32_t size = 0;
+		LoadBytes(view, size);
+		dest.resize(size);
+		LoadBytes(view, dest.data(), size);
 	}
 
 	bool CheckHeader(size_t option = 1) const {
