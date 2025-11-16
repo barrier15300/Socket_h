@@ -237,7 +237,7 @@ struct Packet {
 	}
 	template<class enumT>
 	Packet(enumT type, const std::filesystem::path& path, Header::enum32_t<enumT> dummy_0 = {}) : Packet(static_cast<uint32_t>(type), path) {}
-	explicit Packet(const std::filesystem::path& path) : Packet(Header::type_hash_code<std::ifstream>(), path) {}
+	explicit Packet(const std::filesystem::path& path) : Packet(Header::type_hash_code<FILE>(), path) {}
 
 	size_t Size() const { return m_buffer.size(); }
 
