@@ -1,4 +1,5 @@
 ﻿#pragma once
+#include <optional>
 #include <cstdint>
 #include <string_view>
 #include <string>
@@ -7,6 +8,7 @@
 #include <stdexcept>
 #include <iostream>
 #include <fstream>
+#include <filesystem>
 #include <cstring>
 
 /// <summary>
@@ -209,21 +211,33 @@ struct Packet {
 	template<class T>
 	Packet(const std::vector<T>& data, cross_convertible_d<T> dummy_0 = {}) : Packet(Header::type_hash_code<std::vector<T>>(), data) {}
 
-	Packet(uint32_t id, std::ifstream& ifs) {
+	Packet(uint32_t id, const std::filesystem::path& path) {
+		std::error_code ec;
+		if (path.empty() || !std::filesystem::exists(path, ec) || ec) {
+			return;
+		}
+		
+		const auto size = std::filesystem::file_size(path, ec);
+		if (ec) {
+			return;
+		}
+		
+		std::ifstream ifs(path, std::ios::binary);
+
 		if (!ifs.is_open()) {
 			return;
 		}
 
-		std::istreambuf_iterator<std::ifstream::char_type> begin(ifs);
-		std::istreambuf_iterator<std::ifstream::char_type> end;
+		buf_t data(size);
+		ifs.read(reinterpret_cast<char*>(data.data()), size);
 
-		std::string infile(begin, end);
+		ifs.close();
 
-		*this = Packet(id, infile);
+		*this = Packet(id, data);
 	}
 	template<class enumT>
-	Packet(enumT type, std::ifstream& ifs, Header::enum32_t<enumT> dummy_0 = {}) : Packet(static_cast<uint32_t>(type), ifs) {}
-	explicit Packet(std::ifstream& ifs) : Packet(Header::type_hash_code<std::ifstream>(), ifs) {}
+	Packet(enumT type, const std::filesystem::path& path, Header::enum32_t<enumT> dummy_0 = {}) : Packet(static_cast<uint32_t>(type), path) {}
+	explicit Packet(const std::filesystem::path& path) : Packet(Header::type_hash_code<std::ifstream>(), path) {}
 
 	size_t Size() const { return m_buffer.size(); }
 

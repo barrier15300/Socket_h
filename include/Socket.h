@@ -504,7 +504,6 @@ public:
 	}
 	bool RawRecv(void* dest, int size) const {
 		int received = 0;
-
 		while (received < size) {
 			int ret = recv(sockbase::sock(), (char*)dest + received, size - received, 0);
 			if (ret <= 0) { return false; }
