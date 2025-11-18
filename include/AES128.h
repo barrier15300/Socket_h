@@ -8,8 +8,25 @@
 #include <cmath>
 #include <cstring>
 
-#define __id_Debug_Log(id, message) std::string_view id##_debug_funcname = __func__; struct id { id(std::string_view funcname) : func(funcname) { std::cout << func << ": Start (" << #message << ")" << std::endl; } ~id() { std::cout << func << ": End (" << #message << ")" << std::endl; } std::string_view func; } id##_debug_obj{id##_debug_funcname};
-#define __Debug_Log(message) __id_Debug_Log(i845649237850, message);
+struct __Debug_Log_Only {
+
+	__Debug_Log_Only(std::string_view funcname) : func(funcname) {
+		for (int c = nest++; c > 0; ++c) {
+			std::cout << "\t";
+		}
+		std::cout << func << ": Start" << std::endl;
+	}
+	~__Debug_Log_Only() {
+		for (int c = --nest; c > 0; ++c) {
+			std::cout << "\t";
+		}
+		std::cout << func << ": End" << std::endl;
+	}
+	
+	static inline int nest = 0;
+	std::string_view func;
+};
+#define __Debug_Log(message) std::string_view __debug_funcname = __func__; __Debug_Log_Only __debug_obj{__debug_funcname}
 
 
 static constexpr size_t _bit_width(uint64_t test) noexcept {

@@ -5,10 +5,10 @@
 ---
 # enum
 
-| 型名                                     | 説明                   | ソース        |
-| -------------------------------------- | -------------------- | ---------- |
-| [IPVersion](Socket/enums/IPVersion.md) | IPアドレスのバージョンをまとめた列挙型 | [Source]() |
-| [Protocol](Socket/enums/Protocol.md)   | 通信で使うプロトコルをまとめた列挙型   | [Source]() |
+| 型名                              | 説明                   | ソース        |
+| ------------------------------- | -------------------- | ---------- |
+| [IPVersion](enums/IPVersion.md) | IPアドレスのバージョンをまとめた列挙型 | [Source]() |
+| [Protocol](enums/Protocol.md)   | 通信で使うプロトコルをまとめた列挙型   | [Source]() |
 
 ---
 # types
