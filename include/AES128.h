@@ -11,13 +11,13 @@
 struct __Debug_Log_Only {
 
 	__Debug_Log_Only(std::string_view funcname) : func(funcname) {
-		for (int c = nest++; c > 0; ++c) {
+		for (int c = nest++; c > 0; --c) {
 			std::cout << "\t";
 		}
 		std::cout << func << ": Start" << std::endl;
 	}
 	~__Debug_Log_Only() {
-		for (int c = --nest; c > 0; ++c) {
+		for (int c = --nest; c > 0; --c) {
 			std::cout << "\t";
 		}
 		std::cout << func << ": End" << std::endl;
@@ -381,16 +381,21 @@ public:
 	}
 
 	bool IsInit() const noexcept {
+		__Debug_Log();
 		return (bool)m_resource;
 	}
 
 	block_t Encrypt(const block_t& src) const {
+		__Debug_Log();
+
 		if (!IsInit()) {
 			throw std::runtime_error("not initialized!!!!!!!");
 		}
 		return _Encrypt(src, m_resource->m_roundkey);
 	}
 	block_t Decrypt(const block_t& src) const {
+		__Debug_Log();
+
 		if (!IsInit()) {
 			throw std::runtime_error("not initialized!!!!!!!");
 		}
@@ -398,17 +403,21 @@ public:
 	}
 
 	static bool BlockBaseCheck(size_t rawlength) noexcept {
+		__Debug_Log();
 		return (rawlength & block_size_mask) == 0;
 	}
 	static size_t BlockLength(size_t rawlength) noexcept {
+		__Debug_Log();
 		return (rawlength >> block_size_shift) + (bool)(rawlength & block_size_mask);
 	}
 	static bytearray SizeAlloc(size_t rawlength) {
+		__Debug_Log();
 		bytearray ret;
 		ret.resize(rawlength);
 		return ret;
 	}
 	static block_t ArraySep(const bytearray& src, size_t section) {
+		__Debug_Log();
 		auto sdata = src.data();
 		auto beg = sdata + (section * block_size);
 		auto end = sdata + ((section + 1) * block_size);
@@ -418,6 +427,7 @@ public:
 		return bytearray{beg, end};
 	}
 	static void BlockAssign(bytearray& target, size_t section, block_t src) {
+		__Debug_Log();
 		auto beg = src.get_bytes()->begin();
 		auto end = src.get_bytes()->end();
 		auto left = target.size() - (section * block_size);
@@ -428,6 +438,7 @@ public:
 	}
 	template<class F>
 	static void ParallelProcessor(size_t size, F&& f) {
+		__Debug_Log();
 		size_t available = std::thread::hardware_concurrency();
 		std::vector<std::future<void>> tasks;
 		tasks.reserve(available);
