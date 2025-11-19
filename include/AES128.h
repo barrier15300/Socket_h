@@ -50,14 +50,6 @@ class AES128 {
 	
 public:
 
-	AES128() = default;
-	AES128(const AES128&) = delete;
-	AES128(AES128&&) = default;
-	~AES128() = default;
-
-	AES128& operator=(const AES128&) = delete;
-	AES128& operator=(AES128&&) = default;
-
 	using byte_t = uint8_t;
 
 	template<size_t keybytes>

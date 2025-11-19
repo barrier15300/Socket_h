@@ -399,12 +399,13 @@ public:
 	}
 
 	basic_TCPSocket(const basic_TCPSocket&) = delete;
-	basic_TCPSocket(basic_TCPSocket&& other) noexcept : sockbase(std::move(other)) {}
+	basic_TCPSocket(basic_TCPSocket&& other) noexcept : CryptEngine(std::move(other.CryptEngine)), sockbase(std::move(other)) {}
 
 	basic_TCPSocket& operator=(const basic_TCPSocket&) = delete;
 	basic_TCPSocket& operator=(basic_TCPSocket&& other) noexcept {
 		CryptEngine = std::move(other.CryptEngine);
-		return *(basic_TCPSocket*)&sockbase::operator=(std::move(other));
+		sockbase::operator=(std::move(other));
+		return *this;
 	}
 
 	bool Connect(typename sockbase::IPType hostaddr, int timeout = 0) {
