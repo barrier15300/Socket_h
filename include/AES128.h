@@ -30,8 +30,8 @@ struct __Debug_Log_Only {
 	static inline int nest = 0;
 	std::string_view func;
 };
-#define __Debug_Log(message) std::string_view __debug_funcname = __func__; __Debug_Log_Only __debug_obj{__debug_funcname}
-
+//#define __Debug_Log(message) std::string_view __debug_funcname = __func__; __Debug_Log_Only __debug_obj{__debug_funcname}
+#define __Debug_Log(message)
 
 static constexpr size_t _bit_width(uint64_t test) noexcept {
 	constexpr size_t bits = sizeof(size_t) * 8;
