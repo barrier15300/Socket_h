@@ -11,26 +11,37 @@
 #include <string_view>
 #include <future>
 #include <stdexcept>
+#include <sstream>
 
 struct __Debug_Log_Only {
 
-	__Debug_Log_Only(std::string_view funcname) : func(funcname) {
+	__Debug_Log_Only(std::string _funcname, std::string _message) : func(_funcname), message(_message) {
 		for (int c = nest++; c > 0; --c) {
 			std::cout << "\t";
 		}
-		std::cout << func << ": Start" << std::endl;
+		std::cout << func << ": Start (message: { " << message << " })" << std::endl;
 	}
 	~__Debug_Log_Only() {
 		for (int c = --nest; c > 0; --c) {
 			std::cout << "\t";
 		}
-		std::cout << func << ": End" << std::endl;
+		std::cout << func << ": End (message: { " << message << " })" << std::endl;
 	}
 	
 	static inline int nest = 0;
-	std::string_view func;
+	std::string func;
+	std::string message;
 };
-#define __Debug_Log(message) std::string_view __debug_funcname = __func__; __Debug_Log_Only __debug_obj{__debug_funcname}
+template<class C>
+inline std::string __Debug_ByteView(const C& c) {
+	std::ostringstream ret{};
+	ret << "Key: ";
+	for (auto&& b : c) {
+		ret << std::setfill('0') << std::setw(2) << std::hex << std::right << (int)b;
+	}
+	return ret.str();
+}
+#define __Debug_Log(message) std::string __debug_funcname = __func__; std::string __debug_message = message; __Debug_Log_Only __debug_obj{__debug_funcname, __debug_message}
 // #define __Debug_Log(message)
 
 static constexpr size_t _bit_width(uint64_t test) noexcept {
@@ -362,8 +373,8 @@ public:
 		return Init(bytearray{key.begin(), key.end()});
 	}
 	bool Init(const cbytearray<16>& key) {
-
-		__Debug_Log();
+		
+		__Debug_Log("key: " + __Debug_ByteView(key));
 
 		m_resource = std::make_unique<_impl_resource>();
 
@@ -378,12 +389,12 @@ public:
 	}
 
 	bool IsInit() const noexcept {
-		__Debug_Log();
+		__Debug_Log("");
 		return (bool)m_resource;
 	}
 
 	block_t Encrypt(const block_t& src) const {
-		__Debug_Log();
+		__Debug_Log("");
 
 		if (!IsInit()) {
 			throw std::runtime_error("not initialized!!!!!!!");
@@ -391,7 +402,7 @@ public:
 		return _Encrypt(src, m_resource->m_roundkey);
 	}
 	block_t Decrypt(const block_t& src) const {
-		__Debug_Log();
+		__Debug_Log("");
 
 		if (!IsInit()) {
 			throw std::runtime_error("not initialized!!!!!!!");
@@ -400,21 +411,21 @@ public:
 	}
 
 	static bool BlockBaseCheck(size_t rawlength) noexcept {
-		__Debug_Log();
+		__Debug_Log(std::to_string(rawlength));
 		return (rawlength & block_size_mask) == 0;
 	}
 	static size_t BlockLength(size_t rawlength) noexcept {
-		__Debug_Log();
+		__Debug_Log(std::to_string(rawlength));
 		return (rawlength >> block_size_shift) + (bool)(rawlength & block_size_mask);
 	}
 	static bytearray SizeAlloc(size_t rawlength) {
-		__Debug_Log();
+		__Debug_Log(std::to_string(rawlength));
 		bytearray ret;
 		ret.resize(rawlength);
 		return ret;
 	}
 	static block_t ArraySep(const bytearray& src, size_t section) {
-		__Debug_Log();
+		__Debug_Log("section: " + std::to_string(section));
 		auto sdata = src.data();
 		auto beg = sdata + (section * block_size);
 		auto end = sdata + ((section + 1) * block_size);
@@ -425,8 +436,8 @@ public:
 		std::copy(beg, end, ret.m_bytes.begin());
 		return ret;
 	}
-	static void BlockAssign(bytearray& target, size_t section, block_t src) {
-		__Debug_Log();
+	static void BlockAssign(bytearray& target, size_t section, const block_t& src) {
+		__Debug_Log("section: " + std::to_string(section));
 		auto beg = src.m_bytes.begin();
 		auto end = src.m_bytes.end();
 		auto left = target.size() - (section * block_size);
@@ -437,7 +448,7 @@ public:
 	}
 	template<class F>
 	static void ParallelProcessor(size_t size, F&& f) {
-		__Debug_Log();
+		__Debug_Log("");
 		size_t available = std::thread::hardware_concurrency();
 		std::vector<std::future<void>> tasks;
 		tasks.reserve(available);
@@ -714,20 +725,20 @@ public:
 private:
 
 	static void subbytes(block_t& b) noexcept {
-		__Debug_Log();
+		__Debug_Log("");
 
 		for (size_t i = 0; i < block_size; ++i) {
 			b[i] = SBox[b[i]];
 		}
 	}
 	static void invsubbytes(block_t& b) noexcept {
-		__Debug_Log();
+		__Debug_Log("");
 		for (size_t i = 0; i < block_size; ++i) {
 			b[i] = InvSBox[b[i]];
 		}
 	}
 	static void shiftrows(block_t& b) noexcept {
-		__Debug_Log();
+		__Debug_Log("");
 
 		block_t t = b;
 
@@ -748,7 +759,7 @@ private:
 		b.m_byte4s[3][3] = t.m_byte4s[2][3];
 	}
 	static void invshiftrows(block_t& b) noexcept {
-		__Debug_Log();
+		__Debug_Log("");
 
 		block_t t = b;
 
@@ -769,12 +780,12 @@ private:
 		b.m_byte4s[3][3] = t.m_byte4s[0][3];
 	}
 	static void mixcolumn(typename block_t::byte4_t& r, uint32_t& dest) noexcept {
-		__Debug_Log();
+		__Debug_Log("");
 
 		dest = ColumnTable[0][r[0]] ^ ColumnTable[1][r[1]] ^ ColumnTable[2][r[2]] ^ ColumnTable[3][r[3]];
 	}
 	static void mixcolumns(block_t& b) noexcept {
-		__Debug_Log();
+		__Debug_Log("");
 
 		constexpr size_t loop = sizeof(block_t::byte4_t) / sizeof(byte_t);
 		for (size_t i = 0; i < loop; ++i) {
@@ -782,12 +793,12 @@ private:
 		}
 	}
 	static void invmixcolumn(typename block_t::byte4_t& r, uint32_t& dest)noexcept {
-		__Debug_Log();
+		__Debug_Log("");
 		
 		dest = InvColumnTable[0][r[0]] ^ InvColumnTable[1][r[1]] ^ InvColumnTable[2][r[2]] ^ InvColumnTable[3][r[3]];
 	}
 	static void invmixcolumns(block_t& b)noexcept {
-		__Debug_Log();
+		__Debug_Log("");
 		
 		constexpr size_t loop = sizeof(block_t::byte4_t) / sizeof(byte_t);
 		for (size_t i = 0; i < loop; ++i) {
@@ -795,17 +806,17 @@ private:
 		}
 	}
 	static void addroundkey(block_t& s, const block_t& rk)noexcept {
-		__Debug_Log();
+		__Debug_Log("");
 		
 		s ^= rk;
 	}
 	static void rotword(uint32_t& w)noexcept {
-		__Debug_Log();
+		__Debug_Log("");
 		
 		w = _________ROR(w, 8);
 	}
 	static void subword(uint32_t& w)noexcept {
-		__Debug_Log();
+		__Debug_Log("");
 		
 		w = ((uint32_t)SBox[(w >> 0) & 0xff] << 0) |
 			((uint32_t)SBox[(w >> 8) & 0xff] << 8) |
@@ -813,7 +824,7 @@ private:
 			((uint32_t)SBox[(w >> 24) & 0xff] << 24);
 	}
 	static roundkeys _KeyExpansion(const block_t& key) noexcept {
-		__Debug_Log();
+		__Debug_Log("");
 		
 		constexpr size_t startwords = block_size / sizeof(uint32_t);
 		roundkeys rk{};
@@ -843,7 +854,7 @@ private:
 		return rk;
 	}
 	static block_t _Encrypt(const block_t& src, const roundkeys& key) noexcept {
-		__Debug_Log();
+		__Debug_Log("");
 		
 		block_t state = src;
 		addroundkey(state, key[0]);
@@ -859,7 +870,7 @@ private:
 		return state;
 	}
 	static block_t _Decrypt(const block_t& src, const roundkeys& key) noexcept {
-		__Debug_Log();
+		__Debug_Log("");
 		
 		block_t state = src;
 		addroundkey(state, key[Nr]);
