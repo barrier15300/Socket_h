@@ -403,7 +403,8 @@ public:
 
 	basic_TCPSocket& operator=(const basic_TCPSocket&) = delete;
 	basic_TCPSocket& operator=(basic_TCPSocket&& other) noexcept {
-		return *(basic_TCPSocket*)sockbase::Copy(&other);
+		CryptEngine = std::move(other.CryptEngine);
+		return *(basic_TCPSocket*)&sockbase::operator=(std::move(other));
 	}
 
 	bool Connect(typename sockbase::IPType hostaddr, int timeout = 0) {
