@@ -497,6 +497,7 @@ public:
 	}
 
 	bool RawSend(const void* src, int size) {
+		__Debug_Log();
 		int sended = 0;
 		while (sended < size) {
 			int ret = send(sockbase::sock(), (const char*)src + sended, size - sended, 0);
@@ -506,6 +507,7 @@ public:
 		return true;
 	}
 	bool RawRecv(void* dest, int size) {
+		__Debug_Log();
 		int received = 0;
 		while (received < size) {
 			int ret = recv(sockbase::sock(), (char*)dest + received, size - received, 0);
