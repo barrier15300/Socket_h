@@ -30,8 +30,8 @@ struct __Debug_Log_Only {
 	static inline int nest = 0;
 	std::string_view func;
 };
-//#define __Debug_Log(message) std::string_view __debug_funcname = __func__; __Debug_Log_Only __debug_obj{__debug_funcname}
-#define __Debug_Log(message)
+#define __Debug_Log(message) std::string_view __debug_funcname = __func__; __Debug_Log_Only __debug_obj{__debug_funcname}
+// #define __Debug_Log(message)
 
 static constexpr size_t _bit_width(uint64_t test) noexcept {
 	constexpr size_t bits = sizeof(size_t) * 8;
@@ -254,25 +254,37 @@ public:
 		}
 	};
 
-	struct block_t {
+	struct alignas(block_size) block_t {
 		using word_t = uint64_t;
 		using int4_t = std::array<uint32_t, 4>;
 		using byte4_t = std::array<byte_t, 4>;
 
-		word_t m_words[block_size / sizeof(word_t)]{};
-		
+		union {
+			word_t m_words[block_size / sizeof(word_t)];
+			int4_t m_int4;
+			byte4_t m_byte4s[block_size / sizeof(byte4_t)];
+			cbytearray<block_size> m_bytes{};
+		};
+
+		void dbg_print() {
+			for (auto b : m_bytes) {
+				std::cout << std::setfill('0') << std::setw(2) << std::hex << std::right << (int)b;
+			}
+			std::cout << std::endl;
+		}
+
 		constexpr block_t() noexcept {}
 		constexpr block_t(word_t from) noexcept { m_words[0] = from; }
-		block_t(const cbytearray<block_size>& from) noexcept { *get_bytes() = from; }
-		block_t(cbytearray<block_size>&& from) noexcept { *get_bytes() = std::move(from); }
-		block_t(const bytearray& from) noexcept { std::memcpy(get_bytes()->data(), from.data(), from.size()); }
-		block_t(bytearray&& from) noexcept { std::memcpy(get_bytes()->data(), from.data(), from.size()); }
+		constexpr block_t(const cbytearray<block_size>& from) noexcept : m_bytes(from) {};
+		constexpr block_t(cbytearray<block_size>&& from) noexcept : m_bytes(std::move(from)) {}
+		block_t(const bytearray& from) noexcept { std::memcpy(m_bytes.data(), from.data(), from.size()); }
+		block_t(bytearray&& from) noexcept { std::memcpy(m_bytes.data(), from.data(), from.size()); }
 		constexpr block_t(const block_t&) noexcept = default;
 		constexpr block_t(block_t&&) noexcept = default;
-		
+
 		constexpr block_t& operator=(const block_t&) noexcept = default;
 		constexpr block_t& operator=(block_t&&) noexcept = default;
-		
+
 		constexpr bool add_word(word_t* l, word_t r, bool carry) noexcept {
 			word_t left = *l;
 			*l = left + r;
@@ -282,30 +294,11 @@ public:
 			return add_word(l, ~r, borrow);
 		}
 
-		int4_t* get_int4() {
-			return reinterpret_cast<int4_t*>(m_words);
+		constexpr byte_t& operator[](size_t idx) noexcept {
+			return m_bytes[idx];
 		}
-		const int4_t* get_int4() const {
-			return reinterpret_cast<const int4_t*>(m_words);
-		}
-		byte4_t* get_byte4() {
-			return reinterpret_cast<byte4_t*>(m_words);
-		}
-		const byte4_t* get_byte4() const {
-			return reinterpret_cast<const byte4_t*>(m_words);
-		}
-		cbytearray<block_size>* get_bytes() {
-			return reinterpret_cast<cbytearray<block_size>*>(m_words);
-		}
-		const cbytearray<block_size>* get_bytes() const {
-			return reinterpret_cast<const cbytearray<block_size>*>(m_words);
-		}
-
-		byte_t& operator[](size_t idx) noexcept {
-			return (*get_bytes())[idx];
-		}
-		byte_t operator[](size_t idx) const noexcept {
-			return  (*get_bytes())[idx];
+		constexpr byte_t operator[](size_t idx) const noexcept {
+			return m_bytes[idx];
 		}
 
 		constexpr block_t& operator+=(const block_t& other) noexcept {
@@ -432,11 +425,11 @@ public:
 	}
 	static void BlockAssign(bytearray& target, size_t section, block_t src) {
 		__Debug_Log();
-		auto beg = src.get_bytes()->begin();
-		auto end = src.get_bytes()->end();
+		auto beg = src.m_bytes.begin();
+		auto end = src.m_bytes.end();
 		auto left = target.size() - (section * block_size);
 		if (left < block_size) {
-			end = src.get_bytes()->begin() + left;
+			end = src.m_bytes.begin() + left;
 		}
 		std::copy(beg, end, target.begin() + (section * block_size));
 	}
@@ -736,42 +729,42 @@ private:
 
 		block_t t = b;
 
-		b.get_byte4()[0][1] = t.get_byte4()[1][1];
-		b.get_byte4()[0][2] = t.get_byte4()[2][2];
-		b.get_byte4()[0][3] = t.get_byte4()[3][3];
+		b.m_byte4s[0][1] = t.m_byte4s[1][1];
+		b.m_byte4s[0][2] = t.m_byte4s[2][2];
+		b.m_byte4s[0][3] = t.m_byte4s[3][3];
 		
-		b.get_byte4()[1][1] = t.get_byte4()[2][1];
-		b.get_byte4()[1][2] = t.get_byte4()[3][2];
-		b.get_byte4()[1][3] = t.get_byte4()[0][3];
+		b.m_byte4s[1][1] = t.m_byte4s[2][1];
+		b.m_byte4s[1][2] = t.m_byte4s[3][2];
+		b.m_byte4s[1][3] = t.m_byte4s[0][3];
 		
-		b.get_byte4()[2][1] = t.get_byte4()[3][1];
-		b.get_byte4()[2][2] = t.get_byte4()[0][2];
-		b.get_byte4()[2][3] = t.get_byte4()[1][3];
+		b.m_byte4s[2][1] = t.m_byte4s[3][1];
+		b.m_byte4s[2][2] = t.m_byte4s[0][2];
+		b.m_byte4s[2][3] = t.m_byte4s[1][3];
 		
-		b.get_byte4()[3][1] = t.get_byte4()[0][1];
-		b.get_byte4()[3][2] = t.get_byte4()[1][2];
-		b.get_byte4()[3][3] = t.get_byte4()[2][3];
+		b.m_byte4s[3][1] = t.m_byte4s[0][1];
+		b.m_byte4s[3][2] = t.m_byte4s[1][2];
+		b.m_byte4s[3][3] = t.m_byte4s[2][3];
 	}
 	static void invshiftrows(block_t& b) noexcept {
 		__Debug_Log();
 
 		block_t t = b;
 
-		b.get_byte4()[0][1] = t.get_byte4()[3][1];
-		b.get_byte4()[0][2] = t.get_byte4()[2][2];
-		b.get_byte4()[0][3] = t.get_byte4()[1][3];
+		b.m_byte4s[0][1] = t.m_byte4s[3][1];
+		b.m_byte4s[0][2] = t.m_byte4s[2][2];
+		b.m_byte4s[0][3] = t.m_byte4s[1][3];
 		
-		b.get_byte4()[1][1] = t.get_byte4()[0][1];
-		b.get_byte4()[1][2] = t.get_byte4()[3][2];
-		b.get_byte4()[1][3] = t.get_byte4()[2][3];
+		b.m_byte4s[1][1] = t.m_byte4s[0][1];
+		b.m_byte4s[1][2] = t.m_byte4s[3][2];
+		b.m_byte4s[1][3] = t.m_byte4s[2][3];
 		
-		b.get_byte4()[2][1] = t.get_byte4()[1][1];
-		b.get_byte4()[2][2] = t.get_byte4()[0][2];
-		b.get_byte4()[2][3] = t.get_byte4()[3][3];
+		b.m_byte4s[2][1] = t.m_byte4s[1][1];
+		b.m_byte4s[2][2] = t.m_byte4s[0][2];
+		b.m_byte4s[2][3] = t.m_byte4s[3][3];
 		
-		b.get_byte4()[3][1] = t.get_byte4()[2][1];
-		b.get_byte4()[3][2] = t.get_byte4()[1][2];
-		b.get_byte4()[3][3] = t.get_byte4()[0][3];
+		b.m_byte4s[3][1] = t.m_byte4s[2][1];
+		b.m_byte4s[3][2] = t.m_byte4s[1][2];
+		b.m_byte4s[3][3] = t.m_byte4s[0][3];
 	}
 	static void mixcolumn(typename block_t::byte4_t& r, uint32_t& dest) noexcept {
 		__Debug_Log();
@@ -783,7 +776,7 @@ private:
 
 		constexpr size_t loop = sizeof(block_t::byte4_t) / sizeof(byte_t);
 		for (size_t i = 0; i < loop; ++i) {
-			mixcolumn(b.get_byte4()[i], (*b.get_int4())[i]);
+			mixcolumn(b.m_byte4s[i], b.m_int4[i]);
 		}
 	}
 	static void invmixcolumn(typename block_t::byte4_t& r, uint32_t& dest)noexcept {
@@ -796,7 +789,7 @@ private:
 		
 		constexpr size_t loop = sizeof(block_t::byte4_t) / sizeof(byte_t);
 		for (size_t i = 0; i < loop; ++i) {
-			invmixcolumn(b.get_byte4()[i], (*b.get_int4())[i]);
+			invmixcolumn(b.m_byte4s[i], b.m_int4[i]);
 		}
 	}
 	static void addroundkey(block_t& s, const block_t& rk)noexcept {
@@ -832,7 +825,7 @@ private:
 			constexpr size_t mask = (sizeof(uint32_t) - 1);
 			size_t shift = _bit_width(sizeof(uint32_t) - 1);
 			size_t shifted = wordgenerated >> shift;
-			uint32_t temp = (*rk[(wordgenerated - 1) >> shift].get_int4())[(wordgenerated - 1) & mask];
+			uint32_t temp = rk[(wordgenerated - 1) >> shift].m_int4[(wordgenerated - 1) & mask];
 
 			if ((wordgenerated & mask) == 0) {
 				rotword(temp);
@@ -841,7 +834,7 @@ private:
 				//temp &= (temp ^ RCon[rconiter++] << 24) | ((1 << 24) - 1);
 			}
 
-			(*rk[shifted].get_int4())[wordgenerated & mask] = (*rk[shifted - 1].get_int4())[wordgenerated & mask] ^ temp;
+			rk[shifted].m_int4[wordgenerated & mask] = rk[shifted - 1].m_int4[wordgenerated & mask] ^ temp;
 			++wordgenerated;
 		}
 

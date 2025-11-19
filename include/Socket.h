@@ -642,16 +642,20 @@ public:
 
 protected:
 
-	bool Crypt(const std::vector<uint8_t>& src, std::vector<uint8_t>& dest, typename AES128::cryptmode_t mode) {
+	bool Crypt(const bytearray& src, bytearray& dest, typename AES128::cryptmode_t mode) {
 		if (!CryptEngine.IsInit()) {
 			return false;
 		}
+		if (std::addressof(src) == std::addressof(dest)) {
+			bytearray tmp = src;
+			return ((&CryptEngine)->*mode)(tmp, dest, tmp.size());
+		}
 		return ((&CryptEngine)->*mode)(src, dest, src.size());
 	}
-	bool Encrypt(const std::vector<uint8_t>& src, std::vector<uint8_t>& dest) {
+	bool Encrypt(const bytearray& src, bytearray& dest) {
 		return Crypt(src, dest, &AES128::CTREncrypt);
 	}
-	bool Decrypt(const std::vector<uint8_t>& src, std::vector<uint8_t>& dest) {
+	bool Decrypt(const bytearray& src, bytearray& dest) {
 		return Crypt(src, dest, &AES128::CTRDecrypt);
 	}
 
