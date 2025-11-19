@@ -12,6 +12,7 @@
 #include <future>
 #include <stdexcept>
 #include <sstream>
+#include <iomanip>
 
 struct __Debug_Log_Only {
 
