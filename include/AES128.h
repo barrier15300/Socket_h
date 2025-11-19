@@ -421,7 +421,9 @@ public:
 		if ((end - sdata) > src.size()) {
 			end = sdata + src.size();
 		}
-		return bytearray{beg, end};
+		block_t ret{};
+		std::copy(beg, end, ret.m_bytes.begin());
+		return ret;
 	}
 	static void BlockAssign(bytearray& target, size_t section, block_t src) {
 		__Debug_Log();
