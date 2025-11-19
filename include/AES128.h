@@ -41,12 +41,12 @@ inline std::string __Debug_ByteView(const C& c) {
 	}
 	return ret.str();
 }
-#define __Debug_Log(message) std::string __debug_funcname = __func__; std::string __debug_message = message; __Debug_Log_Only __debug_obj{__debug_funcname, __debug_message}
-// #define __Debug_Log(message)
+// #define __Debug_Log(message) std::string __debug_funcname = __func__; std::string __debug_message = message; __Debug_Log_Only __debug_obj{__debug_funcname, __debug_message}
+#define __Debug_Log(message)
 
 static constexpr size_t _bit_width(uint64_t test) noexcept {
-	size_t bits = sizeof(size_t) * 8;
-	size_t testmask = size_t(1) << (bits - 1);
+	constexpr size_t bits = sizeof(size_t) * 8;
+	constexpr size_t testmask = size_t(1) << (bits - 1);
 	for (size_t i = 1; i < bits; ++i) {
 		if ((test << i) & testmask) {
 			return bits - i;
@@ -265,7 +265,7 @@ public:
 		}
 	};
 
-	struct block_t {
+	struct alignas(block_size) block_t {
 		using word_t = uint64_t;
 		using int4_t = std::array<uint32_t, 4>;
 		using byte4_t = std::array<byte_t, 4>;
@@ -495,12 +495,12 @@ public:
 		if (left < block_size) {
 			end = ba.begin() + left;
 		}
-		std::copy(beg, end, target.begin() + (section * block_size));
+		std::copy(beg, end, std::next(target.begin(), (section * block_size)));
 	}
 	template<class F>
 	static void ParallelProcessor(size_t size, F&& f) {
 		__Debug_Log("");
-		size_t available = std::thread::hardware_concurrency();
+		size_t available = std::max(1, std::thread::hardware_concurrency());
 		std::vector<std::future<void>> tasks;
 		tasks.reserve(available);
 		size_t palc = (size / available) + 1;
@@ -838,7 +838,7 @@ private:
 	static void mixcolumns(block_t& b) noexcept {
 		__Debug_Log("");
 
-		size_t loop = sizeof(block_t::byte4_t) / sizeof(byte_t);
+		constexpr size_t loop = sizeof(block_t::byte4_t) / sizeof(byte_t);
 		for (size_t i = 0; i < loop; ++i) {
 			uint32_t _i = 0;
 			mixcolumn(b.ToByte4x4()[i], _i);
@@ -853,7 +853,7 @@ private:
 	static void invmixcolumns(block_t& b)noexcept {
 		__Debug_Log("");
 		
-		size_t loop = sizeof(block_t::byte4_t) / sizeof(byte_t);
+		constexpr size_t loop = sizeof(block_t::byte4_t) / sizeof(byte_t);
 		for (size_t i = 0; i < loop; ++i) {
 			uint32_t _i = 0;
 			invmixcolumn(b.ToByte4x4()[i], _i);
@@ -881,7 +881,7 @@ private:
 	static roundkeys _KeyExpansion(const block_t& key) noexcept {
 		__Debug_Log("");
 		
-		size_t startwords = block_size / sizeof(uint32_t);
+		constexpr size_t startwords = block_size / sizeof(uint32_t);
 		roundkeys rk{};
 		rk[0] = key;
 		size_t wordgenerated = startwords;
@@ -890,8 +890,8 @@ private:
 		size_t itercount = (sizeof(roundkeys) / sizeof(uint32_t));
 
 		while (wordgenerated < itercount) {
-			size_t mask = (sizeof(uint32_t) - 1);
-			size_t shift = _bit_width(sizeof(uint32_t) - 1);
+			constexpr size_t mask = (sizeof(uint32_t) - 1);
+			constexpr size_t shift = _bit_width(sizeof(uint32_t) - 1);
 			size_t shifted = wordgenerated >> shift;
 			uint32_t temp = rk[(wordgenerated - 1) >> shift].ToInt4()[(wordgenerated - 1) & mask];
 
