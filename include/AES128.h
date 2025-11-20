@@ -249,7 +249,7 @@ public:
 		
 		void dbg_print() {
 			for (auto b : m_bytes) {
-				std::cout << std::setfill('0') << std::setw(2) << std::hex << std::right << (int)b;
+				std::cout << std::uppercase << std::setfill('0') << std::setw(2) << std::hex << std::right << (int)b << " ";
 			}
 			std::cout << std::endl;
 		}
@@ -262,6 +262,12 @@ public:
 		block_t(bytearray&& from) noexcept { std::memcpy(m_bytes.data(), from.data(), std::min(from.size(), block_size)); }
 		constexpr block_t(const block_t&) noexcept = default;
 		constexpr block_t(block_t&&) noexcept = default;
+
+		block_t ReverseEndian() const {
+			block_t ret = *this;
+			std::reverse(ret.m_bytes.begin(), ret.m_bytes.end());
+			return ret;
+		}
 
 		constexpr block_t& operator=(const block_t&) noexcept = default;
 		constexpr block_t& operator=(block_t&&) noexcept = default;
@@ -616,13 +622,13 @@ public:
 
 		size_t c = BlockLength(length);
 
-		block_t counter = Initializer();
+		block_t counter = Initializer().ReverseEndian();
 
 		for (size_t i = 0; i < c; ++i) {
 			block_t key = (this->*proc)(counter);
 			block_t out = ArraySep(src, i) ^ key;
 			BlockAssign(dest, i, out);
-			counter += 1;
+			counter = (counter.ReverseEndian() + 1).ReverseEndian();
 		}
 
 		return true;
@@ -648,13 +654,13 @@ public:
 
 		size_t c = BlockLength(length);
 
-		block_t counter = Initializer();
-
 		ParallelProcessor(c, [&](size_t s, size_t e) {
+			block_t counter = (Initializer() + s).ReverseEndian();
 			for (size_t i = s; i < e; ++i) {
-				block_t key = (this->*proc)(counter + i);
+				block_t key = (this->*proc)(counter);
 				block_t out = ArraySep(src, i) ^ key;
 				BlockAssign(dest, i, out);
+				counter = (counter.ReverseEndian() + 1).ReverseEndian();
 			}
 		});
 
