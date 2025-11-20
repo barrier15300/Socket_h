@@ -2,17 +2,13 @@
 #include <array>
 #include <vector>
 #include <cstdint>
-#include <string>
 #include <memory>
 #include <optional>
-#include <cmath>
 #include <cstring>
 #include <iostream>
-#include <string_view>
 #include <future>
 #include <stdexcept>
-#include <sstream>
-#include <iomanip>
+#include <span>
 
 static constexpr size_t _bit_width(uint64_t test) noexcept {
 	constexpr size_t bits = sizeof(size_t) * 8;
@@ -36,6 +32,8 @@ public:
 	template<size_t keybytes>
 	using cbytearray = std::array<byte_t, keybytes>;
 	using bytearray = std::vector<byte_t>;
+	using byte_view = std::span<const byte_t>;
+	using byte_mut = std::span<byte_t>;
 	
 	static constexpr size_t block_size = 0x10;
 	static constexpr size_t block_size_mask = block_size - 1;
@@ -258,13 +256,14 @@ public:
 		constexpr block_t(word_t from) noexcept { m_words[0] = from; }
 		constexpr block_t(const cbytearray<block_size>& from) noexcept { m_bytes = from; }
 		constexpr block_t(cbytearray<block_size>&& from) noexcept { m_bytes = std::move(from); }
-		block_t(const bytearray& from) noexcept { std::memcpy(m_bytes.data(), from.data(), std::min(from.size(), block_size)); }
-		block_t(bytearray&& from) noexcept { std::memcpy(m_bytes.data(), from.data(), std::min(from.size(), block_size)); }
+		block_t(byte_view from) noexcept { std::memcpy(m_bytes.data(), from.data(), std::min(from.size(), block_size)); }
+		block_t(const bytearray& from) noexcept : block_t(byte_view(from)) {}
+		block_t(bytearray&& from) noexcept : block_t(byte_view(from)) {}
 		constexpr block_t(const block_t&) noexcept = default;
 		constexpr block_t(block_t&&) noexcept = default;
 
 		block_t Reverse() const {
-			block_t ret{};
+			block_t ret = *this;
 			std::reverse(ret.m_bytes.begin(), ret.m_bytes.end());
 			return ret;
 		}
@@ -390,23 +389,23 @@ public:
 		ret.resize(rawlength);
 		return ret;
 	}
-	static block_t ArraySep(const bytearray& src, size_t section) {
-		auto sdata = src.data();
+	static block_t ArraySep(byte_view src, size_t section) {
+		auto sdata = std::to_address(src.begin());
 		auto beg = sdata + (section * block_size);
 		auto end = sdata + ((section + 1) * block_size);
 		if ((end - sdata) > src.size()) {
 			end = sdata + src.size();
 		}
-		return bytearray{beg, end};
+		return byte_view{beg, end};
 	}
-	static void BlockAssign(bytearray& target, size_t section, const block_t& src) {
+	static void BlockAssign(byte_mut target, size_t section, const block_t& src) {
 		auto beg = src.m_bytes.begin();
 		auto end = src.m_bytes.end();
 		auto left = target.size() - (section * block_size);
 		if (left < block_size) {
 			end = beg + left;
 		}
-		std::copy(beg, end, std::next(target.begin(), (section * block_size)));
+		std::copy(beg, end, target.begin() + (section * block_size));
 	}
 	template<class F>
 	static void ParallelProcessor(size_t size, F&& f) {

@@ -21,8 +21,8 @@ struct ClientData {
 	int Level = 0;
 	std::string Name = "NoName";
 
-	Packet::buf_t ToBytes() const {
-		Packet::buf_t ret;
+	Packet::bytearray ToBytes() const {
+		Packet::bytearray ret;
 		Packet::StoreBytes(ret, Level);
 		uint32_t len = Name.size();
 		Packet::StoreBytes(ret, len);
@@ -44,8 +44,8 @@ struct ContainerInContainer {
 
 	std::vector<std::string> names;
 
-	Packet::buf_t ToBytes() const {
-		Packet::buf_t ret;
+	Packet::bytearray ToBytes() const {
+		Packet::bytearray ret;
 		uint32_t size = names.size();
 		Packet::StoreBytes(ret, size);
 		for (auto&& elem : names) {
@@ -75,8 +75,8 @@ struct ContainerInContainer {
 struct ContainerInVariable {
 	std::vector<ContainerInContainer> container;
 
-	Packet::buf_t ToBytes() const {
-		Packet::buf_t ret;
+	Packet::bytearray ToBytes() const {
+		Packet::bytearray ret;
 		uint32_t size = container.size();
 		Packet::StoreBytes(ret, size);
 		for (auto&& elem : container) {
@@ -103,19 +103,42 @@ int main(int argc, char* argv[]) {
 	
 	// arg[1]{ 0 = server, 1 = client }
 
-	std::vector<std::string> args;
-	args.insert(args.end(), argv, argv + argc);
+	AES128 engine;
+	engine.Init({0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08, 0x09, 0x0a, 0x0b, 0x0c, 0x0d, 0x0e, 0x0f});
+	engine.Initializer(AES128::bytearray{ 0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00 });
 	
-	if (args.size() <= 1) {
-		return -1;
+	std::string plain = std::string((size_t)1 << 24, '4');
+	AES128::bytearray data = AES128::bytearray(plain.begin(), plain.end());
+
+	printf("start size: %lld\n", plain.size());
+
+	auto tp = std::chrono::high_resolution_clock::now();
+
+	auto ret = engine.CTREncrypt(data);
+	//auto ret = engine.ParallelCTREncrypt(data);
+
+	auto ntp = std::chrono::high_resolution_clock::now();
+	unsigned long long ns = std::chrono::duration_cast<std::chrono::nanoseconds>(ntp - tp).count();
+	printf("Elapsed %lf (s)\n", (double)ns / 1000 / 1000 / 1000);
+
+	for (size_t i = 0; i < 4; ++i) {
+		AES128::block_t b = AES128::ArraySep(ret, i);
+		b.dbg_print();
 	}
-	
-	if (std::stoi(args[1]) == 0) {
-		Server();
-	}
-	else {
-		Client();
-	}
+
+	//std::vector<std::string> args;
+	//args.insert(args.end(), argv, argv + argc);
+	//
+	//if (args.size() <= 1) {
+	//	return -1;
+	//}
+	//
+	//if (std::stoi(args[1]) == 0) {
+	//	Server();
+	//}
+	//else {
+	//	Client();
+	//}
 	
 	return 0;
 }

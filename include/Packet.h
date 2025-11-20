@@ -6,10 +6,10 @@
 #include <vector>
 #include <exception>
 #include <stdexcept>
-#include <iostream>
 #include <fstream>
 #include <filesystem>
 #include <cstring>
+#include <span>
 
 /// <summary>
 /// Header in Packet
@@ -79,37 +79,16 @@ struct Packet {
 
 	static constexpr size_t HeaderSize = sizeof(Header);
 
-	using buf_t = std::vector<uint8_t>;
+	using byte_t = uint8_t;
+	using bytearray = std::vector<byte_t>;
 
-	using byte_iterator_t = decltype(std::declval<const buf_t>().end());
+	using byte_iterator_t = decltype(std::declval<const bytearray>().end());
 	
-	template<class containerT>
-	struct _view {
-
-		using iterator = decltype(std::declval<containerT>().begin());
-
-		_view(containerT& from) : _beg(from.begin()), _end(from.end()) {}
-		_view(containerT& from, ptrdiff_t start_off) : _beg(from.begin() + start_off), _end(from.end()) {}
-		_view(containerT& from, ptrdiff_t start_off, ptrdiff_t end_off) : _beg(from.begin() + start_off), _end(from.end() + end_off) {}
-
-		iterator begin() const {
-			return _beg;
-		}
-
-		iterator end() const {
-			return _end;
-		}
-
-		iterator _beg;
-		iterator _end;
-
-	};
-
-	using byte_view = _view<const buf_t>;
-	using mut_byte_view = _view<buf_t>;
+	using byte_view = std::span<const byte_t>;
+	using mut_byte_view = std::span<byte_t>;
 
 	template<class T, class dummyT = std::nullptr_t>
-	using to_byteable_d = std::enable_if_t<std::is_same<decltype(std::declval<const T>().ToBytes()), buf_t>::value, dummyT>;
+	using to_byteable_d = std::enable_if_t<std::is_same<decltype(std::declval<const T>().ToBytes()), bytearray>::value, dummyT>;
 	template<class T>
 	using to_byteable = to_byteable_d<T, T>;
 	
@@ -140,10 +119,10 @@ struct Packet {
 	Packet& operator=(Packet&&) = default;
 
 	Packet() {};
-	Packet(const buf_t&) = delete;
-	Packet(buf_t&&) = delete;
-	Packet& operator=(const buf_t&) = delete;
-	Packet& operator=(buf_t&&) = delete;
+	Packet(const bytearray&) = delete;
+	Packet(bytearray&&) = delete;
+	Packet& operator=(const bytearray&) = delete;
+	Packet& operator=(bytearray&&) = delete;
 
 	Packet(uint32_t hash, const void* src, uint32_t size) {
 		Header head(hash);
@@ -156,9 +135,9 @@ struct Packet {
 	template<class enumT>
 	Packet(enumT datatype, const void* src, uint32_t size, Header::enum32_t<enumT> dummy_0 = {}) : Packet(static_cast<uint32_t>(datatype), src, size) {}
 
-	Packet(uint32_t id, const buf_t& data) : Packet(id, data.data(), data.size()) {}
+	Packet(uint32_t id, const bytearray& data) : Packet(id, data.data(), data.size()) {}
 	template<class enumT>
-	Packet(enumT type, const buf_t& data, Header::enum32_t<enumT> dummy_0 = {}) : Packet(type, data.data(), data.size()) {}
+	Packet(enumT type, const bytearray& data, Header::enum32_t<enumT> dummy_0 = {}) : Packet(type, data.data(), data.size()) {}
 	
 	template<size_t len>
 	Packet(size_t id, const char(&data)[len]) : Packet(id, std::addressof(data), len - 1) {}
@@ -188,7 +167,7 @@ struct Packet {
 
 	template<class T>
 	Packet(uint32_t id, const T& data, cross_convertible_d<T> dummy_0 = {}) {
-		buf_t _data = Convert<T>(data);
+		bytearray _data = Convert<T>(data);
 		*this = Packet(id, _data.data(), _data.size());
 	}
 	template<class enumT, class T>
@@ -198,10 +177,10 @@ struct Packet {
 
 	template<class T>
 	Packet(uint32_t id, const std::vector<T>& data, cross_convertible_d<T> dummy_0 = {}) {
-		buf_t b;
+		bytearray b;
 		b.reserve(data.size() * sizeof(T));
 		for (auto&& elem : data) {
-			buf_t temp = Convert<T>(elem);
+			bytearray temp = Convert<T>(elem);
 			b.insert(b.end(), temp.begin(), temp.end());
 		}
 		*this = Packet(id, b.data(), b.size());
@@ -262,8 +241,8 @@ struct Packet {
 	
 	size_t Size() const { return m_buffer.size(); }
 
-	const buf_t& GetBuffer() const { return m_buffer; }
-	Packet& SetBuffer(buf_t&& src) {
+	const bytearray& GetBuffer() const { return m_buffer; }
+	Packet& SetBuffer(bytearray&& src) {
 		m_buffer = std::move(src);
 		return *this;
 	}
@@ -292,7 +271,7 @@ struct Packet {
 		if (CheckHeader()) {
 			return std::nullopt;
 		}
-		auto&& [ret, _] = Convert<T>({m_buffer, HeaderSize});
+		auto&& [ret, _] = Convert<T>(byte_view(m_buffer).subspan(HeaderSize));
 		return ret;
 	}
 	
@@ -325,16 +304,16 @@ struct Packet {
 		}
 		std::vector<T> ret;
 		byte_view view = {m_buffer, HeaderSize};
-		while (view._beg < view._end) {
+		while (view.begin() < view.end()) {
 			auto&& [elem, last] = Convert<T>(view);
 			ret.push_back(std::move(elem));
-			view._beg = last._beg;
+			view = last;
 		}
 		return ret;
 	}
 
 	template<class T>
-	static buf_t Convert(const to_byteable<T> &from) {
+	static bytearray Convert(const to_byteable<T> &from) {
 		return from.ToBytes();
 	}
 
@@ -345,16 +324,16 @@ struct Packet {
 		return {ret, view};
 	}
 	
-	static void StoreBytes(buf_t& dest, const void* src, uint32_t size) {
+	static void StoreBytes(bytearray& dest, const void* src, uint32_t size) {
 		dest.insert(dest.end(), static_cast<const uint8_t*>(src), static_cast<const uint8_t*>(src) + size);
 	}
 	static void LoadBytes(byte_view& view, void* dest, uint32_t size) {
-		std::copy(view._beg, view._beg + size, static_cast<uint8_t*>(dest));
-		view._beg += size;
+		std::copy(view.begin(), view.begin() + size, static_cast<uint8_t*>(dest));
+		view = view.subspan(size);
 	}
 
 	template<class T>
-	static void StoreBytes(buf_t& dest, const T& src, memcpy_able_d<T> dummy_0 = {}) {
+	static void StoreBytes(bytearray& dest, const T& src, memcpy_able_d<T> dummy_0 = {}) {
 		StoreBytes(dest, &src, sizeof(T));
 	}
 	template<class T>
@@ -363,19 +342,19 @@ struct Packet {
 	}
 
 	template<class T>
-	static void StoreBytes(buf_t& dest, const T& src, cross_convertible_d<T> dummy_0 = {}) {
-		buf_t data = Convert<T>(src);
+	static void StoreBytes(bytearray& dest, const T& src, cross_convertible_d<T> dummy_0 = {}) {
+		bytearray data = Convert<T>(src);
 		StoreBytes(dest, data.data(), data.size());
 	}
 	template<class T>
 	static void LoadBytes(byte_view& view, T& dest, cross_convertible_d<T> dummy_0 = {}) {
 		auto&& [ret, last] = Convert<T>(view);
 		dest = std::move(ret);
-		view._beg = last._beg;
+		view = last;
 	}
 
 	template<class T>
-	static void StoreBytes(buf_t& dest, const std::vector<T>& src, memcpy_able_d<T> dummy_0 = {}) {
+	static void StoreBytes(bytearray& dest, const std::vector<T>& src, memcpy_able_d<T> dummy_0 = {}) {
 		uint32_t size = src.size();
 		StoreBytes(dest, size);
 		StoreBytes(dest, src.data(), sizeof(T) * size);
@@ -389,11 +368,11 @@ struct Packet {
 	}
 
 	template<class T>
-	static void StoreBytes(buf_t& dest, const std::vector<T>& src, cross_convertible_d<T> dummy_0 = {}) {
+	static void StoreBytes(bytearray& dest, const std::vector<T>& src, cross_convertible_d<T> dummy_0 = {}) {
 		uint32_t size = src.size();
 		StoreBytes(dest, size);
 		for (auto&& elem : src) {
-			buf_t data = Convert<T>(elem);
+			bytearray data = Convert<T>(elem);
 			StoreBytes(dest, data.data(), data.size());
 		}
 	}
@@ -406,11 +385,11 @@ struct Packet {
 		for (size_t i = 0; i < size; ++i) {
 			auto&& [ret, last] = Convert<T>(view);
 			dest.push_back(std::move(ret));
-			view._beg = last._beg;
+			view = last;
 		}
 	}
 
-	static void StoreBytes(buf_t& dest, const std::string& src) {
+	static void StoreBytes(bytearray& dest, const std::string& src) {
 		uint32_t size = src.size();
 		StoreBytes(dest, size);
 		StoreBytes(dest, src.data(), src.size());
@@ -422,7 +401,7 @@ struct Packet {
 		LoadBytes(view, dest.data(), size);
 	}
 
-	static void StoreBytes(buf_t& dest, const std::vector<std::string>& src) {
+	static void StoreBytes(bytearray& dest, const std::vector<std::string>& src) {
 		uint32_t size = src.size();
 		StoreBytes(dest, size);
 		for (auto&& elem : src) {
@@ -447,6 +426,6 @@ struct Packet {
 
 private:
 
-	buf_t m_buffer{};
+	bytearray m_buffer{};
 
 };
