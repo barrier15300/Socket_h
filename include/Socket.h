@@ -497,7 +497,6 @@ public:
 	}
 
 	bool RawSend(const void* src, int size) {
-		__Debug_Log("");
 		int sended = 0;
 		while (sended < size) {
 			int ret = send(sockbase::sock(), (const char*)src + sended, size - sended, 0);
@@ -507,7 +506,6 @@ public:
 		return true;
 	}
 	bool RawRecv(void* dest, int size) {
-		__Debug_Log("");
 		int received = 0;
 		while (received < size) {
 			int ret = recv(sockbase::sock(), (char*)dest + received, size - received, 0);
@@ -554,7 +552,6 @@ public:
 	}
 
 	bool EncryptionSend(const Packet& src) {
-		__Debug_Log(__Debug_ByteView(src.GetBuffer()));
 		if (src.CheckHeader()) {
 			return false;
 		}
@@ -574,7 +571,6 @@ public:
 		if (!EncryptionRecv(data)) {
 			return std::nullopt;
 		}
-		__Debug_Log(__Debug_ByteView(data));
 		return Packet(pak.GetHeader()->Type, data);
 	}
 
