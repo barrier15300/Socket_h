@@ -241,10 +241,10 @@ public:
 		using byte4_t = std::array<byte_t, 4>;
 
 		union {
-			word_t m_words[block_size / sizeof(word_t)]{};
+			word_t m_words[block_size / sizeof(word_t)];
 			int4_t m_int4;
 			std::array<byte4_t, 4> m_byte4s;
-			cbytearray<block_size> m_bytes;
+			cbytearray<block_size> m_bytes{};
 		};
 		
 		void dbg_print() {
@@ -263,8 +263,8 @@ public:
 		constexpr block_t(const block_t&) noexcept = default;
 		constexpr block_t(block_t&&) noexcept = default;
 
-		block_t ReverseEndian() const {
-			block_t ret = *this;
+		block_t Reverse() const {
+			block_t ret{};
 			std::reverse(ret.m_bytes.begin(), ret.m_bytes.end());
 			return ret;
 		}
@@ -622,13 +622,13 @@ public:
 
 		size_t c = BlockLength(length);
 
-		block_t counter = Initializer().ReverseEndian();
+		block_t counter = Initializer().Reverse();
 
 		for (size_t i = 0; i < c; ++i) {
 			block_t key = (this->*proc)(counter);
 			block_t out = ArraySep(src, i) ^ key;
 			BlockAssign(dest, i, out);
-			counter = (counter.ReverseEndian() + 1).ReverseEndian();
+			counter = (counter.Reverse() + 1).Reverse();
 		}
 
 		return true;
@@ -655,12 +655,12 @@ public:
 		size_t c = BlockLength(length);
 
 		ParallelProcessor(c, [&](size_t s, size_t e) {
-			block_t counter = (Initializer() + s).ReverseEndian();
+			block_t counter = (Initializer() + s).Reverse();
 			for (size_t i = s; i < e; ++i) {
 				block_t key = (this->*proc)(counter);
 				block_t out = ArraySep(src, i) ^ key;
 				BlockAssign(dest, i, out);
-				counter = (counter.ReverseEndian() + 1).ReverseEndian();
+				counter = (counter.Reverse() + 1).Reverse();
 			}
 		});
 
