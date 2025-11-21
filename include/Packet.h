@@ -1,15 +1,5 @@
 ﻿#pragma once
-#include <optional>
-#include <cstdint>
-#include <string_view>
-#include <string>
-#include <vector>
-#include <exception>
-#include <stdexcept>
-#include <fstream>
-#include <filesystem>
-#include <cstring>
-#include <span>
+#include "common.h"
 
 /// <summary>
 /// Header in Packet
@@ -17,19 +7,21 @@
 
 struct Header {
 
-	template<class T>
-	using enum32_t = std::enable_if_t<std::is_enum_v<T> && (sizeof(T) == sizeof(uint32_t)), T>;
-
 	Header() {}
-	template<class T>
-	explicit Header(enum32_t<T> _enum) : Header(static_cast<uint32_t>(_enum)) {}
+	template<SocketUtil::enum32_t T>
+	explicit Header(T _enum) : Header(static_cast<uint32_t>(_enum)) {}
 	explicit Header(uint32_t datatype) {
 		Type = datatype;
 	}
 
-	template<class T>
-	enum32_t<T> TypeAs() const {
+	template<SocketUtil::enum32_t T>
+	T TypeAs() const {
 		return static_cast<T>(Type);
+	}
+
+	template<SocketUtil::enum32_t T>
+	bool Is(T type) const {
+		return static_cast<T>(Type) == type;
 	}
 
 	template<class T>
@@ -132,36 +124,36 @@ struct Packet {
 		std::memcpy(m_buffer.data() + HeaderSize, src, head.Size);
 	}
 
-	template<class enumT>
-	Packet(enumT datatype, const void* src, uint32_t size, Header::enum32_t<enumT> dummy_0 = {}) : Packet(static_cast<uint32_t>(datatype), src, size) {}
+	template<SocketUtil::enum32_t enumT>
+	Packet(enumT datatype, const void* src, uint32_t size) : Packet(static_cast<uint32_t>(datatype), src, size) {}
 
 	Packet(uint32_t id, const bytearray& data) : Packet(id, data.data(), data.size()) {}
-	template<class enumT>
-	Packet(enumT type, const bytearray& data, Header::enum32_t<enumT> dummy_0 = {}) : Packet(type, data.data(), data.size()) {}
+	template<SocketUtil::enum32_t enumT>
+	Packet(enumT type, const bytearray& data) : Packet(type, data.data(), data.size()) {}
 	
 	template<size_t len>
 	Packet(size_t id, const char(&data)[len]) : Packet(id, std::addressof(data), len - 1) {}
-	template<class enumT, size_t len>
-	Packet(enumT type, const char(&data)[len], Header::enum32_t<enumT> dummy_0 = {}) : Packet(static_cast<uint32_t>(type), std::addressof(data), len - 1) {}
+	template<SocketUtil::enum32_t enumT, size_t len>
+	Packet(enumT type, const char(&data)[len]) : Packet(static_cast<uint32_t>(type), std::addressof(data), len - 1) {}
 	template<size_t len>
 	Packet(const char(&data)[len]) : Packet(Header::type_hash_code<std::string>(), std::addressof(data), len - 1) {}
 
 	Packet(uint32_t id, const std::string& data) : Packet(id, data.data(), data.size()) {}
-	template<class enumT>
-	Packet(enumT type, const std::string& data, Header::enum32_t<enumT> dummy_0 = {}) : Packet(type, data.data(), data.size()) {}
+	template<SocketUtil::enum32_t enumT>
+	Packet(enumT type, const std::string& data) : Packet(type, data.data(), data.size()) {}
 	Packet(const std::string& data) : Packet(Header::type_hash_code<std::string>(), data.data(), data.size()) {}
 	
 	template<class T>
 	Packet(uint32_t id, const T& data, memcpy_able_d<T> dummy_0 = {}) : Packet(id, std::addressof(data), sizeof(T)) {}
-	template<class enumT, class T>
-	Packet(enumT type, const T& data, Header::enum32_t<enumT> dummy_0 = {}, memcpy_able_d<T> dummy_1 = {}) : Packet(static_cast<uint32_t>(type), std::addressof(data), sizeof(T)) {}
+	template<SocketUtil::enum32_t enumT, class T>
+	Packet(enumT type, const T& data, memcpy_able_d<T> dummy_0 = {}) : Packet(static_cast<uint32_t>(type), std::addressof(data), sizeof(T)) {}
 	template<class T>
 	Packet(const T& data, memcpy_able_d<T> dummy_0 = {}) : Packet(Header::type_hash_code<T>(), std::addressof(data), sizeof(T)) {}
 
 	template<class T>
 	Packet(uint32_t id, const std::vector<T>& data, memcpy_able_d<T> dummy_0 = {}) : Packet(id, data.data(), data.size() * sizeof(T)) {}
-	template<class enumT, class T>
-	Packet(enumT type, const std::vector<T>& data, Header::enum32_t<enumT> dummy_0 = {}, memcpy_able_d<T> dummy_1 = {}) : Packet(static_cast<uint32_t>(type), data.data(), data.size() * sizeof(T)) {}
+	template<SocketUtil::enum32_t enumT, class T>
+	Packet(enumT type, const std::vector<T>& data, memcpy_able_d<T> dummy_0 = {}) : Packet(static_cast<uint32_t>(type), data.data(), data.size() * sizeof(T)) {}
 	template<class T>
 	Packet(const std::vector<T>& data, memcpy_able_d<T> dummy_0) : Packet(Header::type_hash_code<std::vector<T>>(), data.data(), data.size() * sizeof(T)) {}
 
@@ -170,8 +162,8 @@ struct Packet {
 		bytearray _data = Convert<T>(data);
 		*this = Packet(id, _data.data(), _data.size());
 	}
-	template<class enumT, class T>
-	Packet(enumT type, const T& data, Header::enum32_t<enumT> dummy_0 = {}, cross_convertible_d<T> dummy_1 = {}) : Packet(static_cast<uint32_t>(type), data) {}
+	template<SocketUtil::enum32_t enumT, class T>
+	Packet(enumT type, const T& data, cross_convertible_d<T> dummy_0 = {}) : Packet(static_cast<uint32_t>(type), data) {}
 	template<class T>
 	Packet(const T& data, cross_convertible_d<T> dummy_0 = {}) : Packet(Header::type_hash_code<T>(), data) {}
 
@@ -185,8 +177,8 @@ struct Packet {
 		}
 		*this = Packet(id, b.data(), b.size());
 	}
-	template<class enumT, class T>
-	Packet(enumT type, const std::vector<T>& data, Header::enum32_t<enumT> dummy_0 = {}, cross_convertible_d<T> dummy_1 = {}) : Packet(static_cast<uint32_t>(type), data) {}
+	template<SocketUtil::enum32_t enumT, class T>
+	Packet(enumT type, const std::vector<T>& data, cross_convertible_d<T> dummy_0 = {}) : Packet(static_cast<uint32_t>(type), data) {}
 	template<class T>
 	Packet(const std::vector<T>& data, cross_convertible_d<T> dummy_0 = {}) : Packet(Header::type_hash_code<std::vector<T>>(), data) {}
 
@@ -203,8 +195,8 @@ struct Packet {
 
 		*this = Packet(id, data);
 	}
-	template<class enumT>
-	Packet(enumT type, std::ifstream& ifs, Header::enum32_t<enumT> dummy_0 = {}) : Packet(static_cast<uint32_t>(type), ifs) {}
+	template<SocketUtil::enum32_t enumT>
+	Packet(enumT type, std::ifstream& ifs) : Packet(static_cast<uint32_t>(type), ifs) {}
 	explicit Packet(std::ifstream& ifs) : Packet(Header::type_hash_code<FILE>(), ifs) {}
 
 	/*
@@ -303,7 +295,7 @@ struct Packet {
 			return std::nullopt;
 		}
 		std::vector<T> ret;
-		byte_view view = {m_buffer, HeaderSize};
+		byte_view view = byte_view(m_buffer.begin(), HeaderSize);
 		while (view.begin() < view.end()) {
 			auto&& [elem, last] = Convert<T>(view);
 			ret.push_back(std::move(elem));

@@ -18,14 +18,7 @@
 #include <poll.h>
 #endif // _MSC_BUILD
 
-#include <string>
-#include <cstdint>
-#include <stdexcept>
-#include <optional>
-#include <future>
-#include <vector>
-#include <iostream>
-#include <cstring>
+#include "common.h"
 
 #ifdef SOCKET_H_USE_NAMESPACE
 namespace NetIO {
@@ -644,20 +637,16 @@ public:
 
 protected:
 
-	bool Crypt(const bytearray& src, bytearray& dest, typename AES128::cryptmode_t mode) {
+	bool Crypt(AES128::byte_view src, AES128::byte_ref dest, typename AES128::cryptmode_t mode) {
 		if (!CryptEngine.IsInit()) {
 			return false;
 		}
-		if (std::addressof(src) == std::addressof(dest)) {
-			bytearray tmp = src;
-			return ((&CryptEngine)->*mode)(tmp, dest, tmp.size());
-		}
 		return ((&CryptEngine)->*mode)(src, dest, src.size());
 	}
-	bool Encrypt(const bytearray& src, bytearray& dest) {
+	bool Encrypt(AES128::byte_view src, AES128::byte_ref dest) {
 		return Crypt(src, dest, &AES128::CTREncrypt);
 	}
-	bool Decrypt(const bytearray& src, bytearray& dest) {
+	bool Decrypt(AES128::byte_view src, AES128::byte_ref dest) {
 		return Crypt(src, dest, &AES128::CTRDecrypt);
 	}
 

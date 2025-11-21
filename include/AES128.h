@@ -1,14 +1,5 @@
 ﻿#pragma once
-#include <array>
-#include <vector>
-#include <cstdint>
-#include <memory>
-#include <optional>
-#include <cstring>
-#include <iostream>
-#include <future>
-#include <stdexcept>
-#include <span>
+#include "common.h"
 
 static constexpr size_t _bit_width(uint64_t test) noexcept {
 	constexpr size_t bits = sizeof(size_t) * 8;
@@ -27,13 +18,14 @@ class AES128 {
 	
 public:
 
-	using byte_t = uint8_t;
+	using byte_t = SocketUtil::byte_t;
 
 	template<size_t keybytes>
 	using cbytearray = std::array<byte_t, keybytes>;
-	using bytearray = std::vector<byte_t>;
-	using byte_view = std::span<const byte_t>;
-	using byte_mut = std::span<byte_t>;
+	
+	using bytearray = SocketUtil::bytearray;
+	using byte_view = SocketUtil::byte_view;
+	using byte_ref = SocketUtil::byte_ref;
 	
 	static constexpr size_t block_size = 0x10;
 	static constexpr size_t block_size_mask = block_size - 1;
@@ -398,7 +390,7 @@ public:
 		}
 		return byte_view{beg, end};
 	}
-	static void BlockAssign(byte_mut target, size_t section, const block_t& src) {
+	static void BlockAssign(byte_ref target, size_t section, const block_t& src) {
 		auto beg = src.m_bytes.begin();
 		auto end = src.m_bytes.end();
 		auto left = target.size() - (section * block_size);
@@ -431,9 +423,9 @@ public:
 	}
 
 	using crypt_t = block_t(AES128::*)(const block_t&) const;
-	using cryptmode_t = bool(AES128::*)(const bytearray&, bytearray&, size_t) const;
+	using cryptmode_t = bool(AES128::*)(byte_view, byte_ref, size_t) const;
 
-	bool ECB(const bytearray& src, bytearray& dest, size_t length, crypt_t proc) const {
+	bool ECB(byte_view src, byte_ref dest, size_t length, crypt_t proc) const {
 
 		if (!BlockBaseCheck(length)) {
 			return false;
@@ -448,20 +440,20 @@ public:
 
 		return true;
 	}
-	bool ECBEncrypt(const bytearray& src, bytearray& dest, size_t length) const {
+	bool ECBEncrypt(byte_view src, byte_ref dest, size_t length) const {
 		return ECB(src, dest, length, &AES128::Encrypt);
 	}
-	bool ECBDecrypt(const bytearray& src, bytearray& dest, size_t length) const {
+	bool ECBDecrypt(byte_view src, byte_ref dest, size_t length) const {
 		return ECB(src, dest, length, &AES128::Decrypt);
 	}
-	std::optional<bytearray> ECBEncrypt(const bytearray& src) const {
+	std::optional<bytearray> ECBEncrypt(byte_view src) const {
 		bytearray ret = SizeAlloc(src.size());
 		if (!ECBEncrypt(src, ret, ret.size())) {
 			return std::nullopt;
 		}
 		return ret;
 	}
-	std::optional<bytearray> ECBDecrypt(const bytearray& src) const {
+	std::optional<bytearray> ECBDecrypt(byte_view src) const {
 		bytearray ret = SizeAlloc(src.size());
 		if (!ECBDecrypt(src, ret, ret.size())) {
 			return std::nullopt;
@@ -469,7 +461,7 @@ public:
 		return ret;
 	}
 	
-	bool ParallelECB(const bytearray& src, bytearray& dest, size_t length, crypt_t proc) const {
+	bool ParallelECB(byte_view src, byte_ref dest, size_t length, crypt_t proc) const {
 
 		if (!BlockBaseCheck(length)) {
 			return false;
@@ -486,20 +478,20 @@ public:
 
 		return true;
 	}
-	bool ParallelECBEncrypt(const bytearray& src, bytearray& dest, size_t length) const {
+	bool ParallelECBEncrypt(byte_view src, byte_ref dest, size_t length) const {
 		return ParallelECB(src, dest, length, &AES128::Encrypt);
 	}
-	bool ParallelECBDecrypt(const bytearray& src, bytearray& dest, size_t length) const  {
+	bool ParallelECBDecrypt(byte_view src, byte_ref dest, size_t length) const  {
 		return ParallelECB(src, dest, length, &AES128::Decrypt);
 	}
-	std::optional<bytearray> ParallelECBEncrypt(const bytearray& src) const {
+	std::optional<bytearray> ParallelECBEncrypt(byte_view src) const {
 		bytearray ret = SizeAlloc(src.size());
 		if (!ParallelECBEncrypt(src, ret, ret.size())) {
 			return std::nullopt;
 		}
 		return ret;
 	}
-	std::optional<bytearray> ParallelECBDecrypt(const bytearray& src) const {
+	std::optional<bytearray> ParallelECBDecrypt(byte_view src) const {
 		bytearray ret = SizeAlloc(src.size());
 		if (!ParallelECBDecrypt(src, ret, ret.size())) {
 			return std::nullopt;
@@ -507,7 +499,7 @@ public:
 		return ret;
 	}
 
-	bool CBC(const bytearray& src, bytearray& dest, size_t length, crypt_t proc) const {
+	bool CBC(byte_view src, byte_ref dest, size_t length, crypt_t proc) const {
 
 		if (!BlockBaseCheck(length)) {
 			return false;
@@ -533,20 +525,20 @@ public:
 
 		return true;
 	}
-	bool CBCEncrypt(const bytearray& src, bytearray& dest, size_t length) const {
+	bool CBCEncrypt(byte_view src, byte_ref dest, size_t length) const {
 		return CBC(src, dest, length, &AES128::Encrypt);
 	}
-	bool CBCDecrypt(const bytearray& src, bytearray& dest, size_t length) const {
+	bool CBCDecrypt(byte_view src, byte_ref dest, size_t length) const {
 		return CBC(src, dest, length, &AES128::Decrypt);
 	}
-	std::optional<bytearray> CBCEncrypt(const bytearray& src) const {
+	std::optional<bytearray> CBCEncrypt(byte_view src) const {
 		bytearray ret = SizeAlloc(src.size());
 		if (!CBCEncrypt(src, ret, ret.size())) {
 			return std::nullopt;
 		}
 		return ret;
 	}
-	std::optional<bytearray> CBCDecrypt(const bytearray& src) const {
+	std::optional<bytearray> CBCDecrypt(byte_view src) const {
 		bytearray ret = SizeAlloc(src.size());
 		if (!CBCDecrypt(src, ret, ret.size())) {
 			return std::nullopt;
@@ -554,7 +546,7 @@ public:
 		return ret;
 	}
 	
-	bool CFB(const bytearray& src, bytearray& dest, size_t length, crypt_t proc) const {
+	bool CFB(byte_view src, byte_ref dest, size_t length, crypt_t proc) const {
 
 		size_t c = BlockLength(length);
 
@@ -570,24 +562,24 @@ public:
 
 		return true;
 	}
-	bool CFBEncrypt(const bytearray& src, bytearray& dest, size_t length) const {
+	bool CFBEncrypt(byte_view src, byte_ref dest, size_t length) const {
 		return CFB(src, dest, length, &AES128::Encrypt);
 	}
-	bool CFBDecrypt(const bytearray& src, bytearray& dest, size_t length) const {
+	bool CFBDecrypt(byte_view src, byte_ref dest, size_t length) const {
 		return CFB(src, dest, length, &AES128::Decrypt);
 	}
-	bytearray CFBEncrypt(const bytearray& src) const {
+	bytearray CFBEncrypt(byte_view src) const {
 		bytearray ret = SizeAlloc(src.size());
 		CFBEncrypt(src, ret, ret.size());
 		return ret;
 	}
-	bytearray CFBDecrypt(const bytearray& src) const {
+	bytearray CFBDecrypt(byte_view src) const {
 		bytearray ret = SizeAlloc(src.size());
 		CFBDecrypt(src, ret, ret.size());
 		return ret;
 	}
 	
-	bool OFB(const bytearray& src, bytearray& dest, size_t length, crypt_t proc) const {
+	bool OFB(byte_view src, byte_ref dest, size_t length, crypt_t proc) const {
 
 		size_t c = BlockLength(length);
 
@@ -600,24 +592,24 @@ public:
 
 		return true;
 	}
-	bool OFBEncrypt(const bytearray& src, bytearray& dest, size_t length) const  {
+	bool OFBEncrypt(byte_view src, byte_ref dest, size_t length) const  {
 		return OFB(src, dest, length, &AES128::Encrypt);
 	}
-	bool OFBDecrypt(const bytearray& src, bytearray& dest, size_t length) const  {
+	bool OFBDecrypt(byte_view src, byte_ref dest, size_t length) const  {
 		return OFBEncrypt(src, dest, length);
 	}
-	bytearray OFBEncrypt(const bytearray& src) const {
+	bytearray OFBEncrypt(byte_view src) const {
 		bytearray ret = SizeAlloc(src.size());
 		OFBEncrypt(src, ret, ret.size());
 		return ret;
 	}
-	bytearray OFBDecrypt(const bytearray& src) const {
+	bytearray OFBDecrypt(byte_view src) const {
 		bytearray ret = SizeAlloc(src.size());
 		OFBDecrypt(src, ret, ret.size());
 		return ret;
 	}
 	
-	bool CTR(const bytearray& src, bytearray& dest, size_t length, crypt_t proc) const {
+	bool CTR(byte_view src, byte_ref dest, size_t length, crypt_t proc) const {
 
 		size_t c = BlockLength(length);
 
@@ -632,24 +624,24 @@ public:
 
 		return true;
 	}
-	bool CTREncrypt(const bytearray& src, bytearray& dest, size_t length) const {
+	bool CTREncrypt(byte_view src, byte_ref dest, size_t length) const {
 		return CTR(src, dest, length, &AES128::Encrypt);
 	}
-	bool CTRDecrypt(const bytearray& src, bytearray& dest, size_t length) const {
+	bool CTRDecrypt(byte_view src, byte_ref dest, size_t length) const {
 		return CTREncrypt(src, dest, length);
 	}
-	bytearray CTREncrypt(const bytearray& src) const {
+	bytearray CTREncrypt(byte_view src) const {
 		bytearray ret = SizeAlloc(src.size());
 		CTREncrypt(src, ret, ret.size());
 		return ret;
 	}
-	bytearray CTRDecrypt(const bytearray& src) const {
+	bytearray CTRDecrypt(byte_view src) const {
 		bytearray ret = SizeAlloc(src.size());
 		CTRDecrypt(src, ret, ret.size());
 		return ret;
 	}
 	
-	bool ParallelCTR(const bytearray& src, bytearray& dest, size_t length, crypt_t proc) const {
+	bool ParallelCTR(byte_view src, byte_ref dest, size_t length, crypt_t proc) const {
 
 		size_t c = BlockLength(length);
 
@@ -665,18 +657,18 @@ public:
 
 		return true;
 	}
-	bool ParallelCTREncrypt(const bytearray& src, bytearray& dest, size_t length) const {
+	bool ParallelCTREncrypt(byte_view src, byte_ref dest, size_t length) const {
 		return ParallelCTR(src, dest, length, &AES128::Encrypt);
 	}
-	bool ParallelCTRDecrypt(const bytearray& src, bytearray& dest, size_t length) const {
+	bool ParallelCTRDecrypt(byte_view src, byte_ref dest, size_t length) const {
 		return ParallelCTREncrypt(src, dest, length);
 	}
-	bytearray ParallelCTREncrypt(const bytearray& src) const {
+	bytearray ParallelCTREncrypt(byte_view src) const {
 		bytearray ret = SizeAlloc(src.size());
 		ParallelCTREncrypt(src, ret, ret.size());
 		return ret;
 	}
-	bytearray ParallelCTRDecrypt(const bytearray& src) const {
+	bytearray ParallelCTRDecrypt(byte_view src) const {
 		bytearray ret = SizeAlloc(src.size());
 		ParallelCTRDecrypt(src, ret, ret.size());
 		return ret;
