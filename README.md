@@ -1,4 +1,4 @@
-﻿# Socket
+# Socket
 
 クロスプラットフォームなソケット通信ライブラリです。
 サブ機能としてAESによる暗号化や、データ型の変換を担うPacket構造体なんかがあったりします。
@@ -35,7 +35,7 @@ Visual Studio 2026 insider Edition
 # Credit
 
 - Apopic ( by https://github.com/apopic )
-- Kernel ( by https://x.com/kernel_vr )
+- Kernel ( by https://github.com/KernelVR )
 - ChatGPT ( by OpenAI )
 
 # TODO:
