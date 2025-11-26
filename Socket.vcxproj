@@ -137,6 +137,9 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClCompile Include="module\CXXSocket\AES128.ixx" />
+    <ClCompile Include="module\CXXSocket\Common.ixx" />
+    <ClCompile Include="module\CXXSocket\Packet.ixx" />
     <ClCompile Include="Socket.cpp" />
   </ItemGroup>
   <ItemGroup>
@@ -147,7 +150,7 @@
     <ClInclude Include="include\MultiWordInt.h" />
     <ClInclude Include="include\Packet.h" />
     <ClInclude Include="include\Socket.h" />
-    <ClInclude Include="module\Socket.ixx" />
+    <ClInclude Include="module\CXXSocket\CXXSocket.ixx" />
   </ItemGroup>
   <ItemGroup>
     <None Include="docs\Overview.md" />

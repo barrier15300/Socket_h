@@ -1,6 +1,4 @@
-﻿
-
-#include <deque>
+﻿#include <deque>
 #include <iomanip>
 #include <chrono>
 #include <map>

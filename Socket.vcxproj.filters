@@ -18,6 +18,15 @@
     <ClCompile Include="Socket.cpp">
       <Filter>ソース ファイル</Filter>
     </ClCompile>
+    <ClCompile Include="module\CXXSocket\Common.ixx">
+      <Filter>ソース ファイル</Filter>
+    </ClCompile>
+    <ClCompile Include="module\CXXSocket\AES128.ixx">
+      <Filter>ソース ファイル</Filter>
+    </ClCompile>
+    <ClCompile Include="module\CXXSocket\Packet.ixx">
+      <Filter>ソース ファイル</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="include\Socket.h">
@@ -41,7 +50,7 @@
     <ClInclude Include="include\common.h">
       <Filter>ヘッダー ファイル</Filter>
     </ClInclude>
-    <ClInclude Include="module\Socket.ixx">
+    <ClInclude Include="module\CXXSocket\CXXSocket.ixx">
       <Filter>ヘッダー ファイル</Filter>
     </ClInclude>
   </ItemGroup>
