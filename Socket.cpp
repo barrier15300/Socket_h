@@ -95,6 +95,7 @@ struct ContainerInVariable {
 	}
 };
 
+import Socket;
 
 int main(int argc, char* argv[]) {
 	
@@ -278,21 +279,21 @@ void Client() {
 
 	std::thread inputthread = std::thread{
 		[&] {
-		while (!stopflag) {
-			std::string sendval;
-			std::cin >> sendval;
+			while (!stopflag) {
+				std::string sendval;
+				std::cin >> sendval;
 			
-			if (sendval == "/exit") {
-				stopflag = true;
-				break;
+				if (sendval == "/exit") {
+					stopflag = true;
+					break;
+				}
+
+				std::lock_guard<std::mutex> lock(mtx);
+
+				Packet pak = Packet(sendval);
+				server.EncryptionSend(sendval);
 			}
-
-			std::lock_guard<std::mutex> lock(mtx);
-
-			Packet pak = Packet(sendval);
-			server.EncryptionSend(sendval);
 		}
-	}
 	};
 
 	while (!stopflag) {
