@@ -95,36 +95,26 @@ struct ContainerInVariable {
 	}
 };
 
-import Socket;
+
+#include "include/MultiWordInt.h"
+#include "include/KeyExchange.h"
 
 int main(int argc, char* argv[]) {
 	
-	TestExport();
+	KeyExchange Keya;
+	KeyExchange Keyb;
+
+	auto kE = Keya.GeneratePublicKey();
+	auto kF = Keyb.GeneratePublicKey();
+
+	auto Ga = Keya.MakeSharedKey(kF);
+	auto Gb = Keyb.MakeSharedKey(kE);
+
+	bool same = Ga == Gb;
+
+	std::cout << std::boolalpha << "shared key same: " << same << std::endl;
 
 	// arg[1]{ 0 = server, 1 = client }
-
-	AES128 engine;
-	engine.Init({0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08, 0x09, 0x0a, 0x0b, 0x0c, 0x0d, 0x0e, 0x0f});
-	engine.Initializer(AES128::bytearray{ 0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00 });
-	
-	std::string plain = std::string((size_t)1 << 32, '4');
-	AES128::bytearray data = AES128::bytearray(plain.begin(), plain.end());
-	AES128::bytearray dest = AES128::bytearray(data.size());
-
-	printf("start size: %lld\n", plain.size());
-
-	auto tp = std::chrono::high_resolution_clock::now();
-
-	engine.ParallelCTREncrypt(data, dest, data.size());
-	
-	auto ntp = std::chrono::high_resolution_clock::now();
-	unsigned long long ns = std::chrono::duration_cast<std::chrono::nanoseconds>(ntp - tp).count();
-	printf("Elapsed %lf (s)\n", (double)ns / 1000 / 1000 / 1000);
-
-	for (size_t i = 0; i < 4; ++i) {
-		AES128::block_t b = AES128::ArraySep(dest, i);
-		b.dbg_print();
-	}
 
 	//std::vector<std::string> args;
 	//args.insert(args.end(), argv, argv + argc);

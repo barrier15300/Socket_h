@@ -3,7 +3,7 @@
 
 #include "MultiWordInt.h"
 
-template<size_t _words, class super = bigint<_words, true>>
+template<size_t _words, class super = bigint<_words, false>>
 struct modint : public super {
 
 	using super::super;

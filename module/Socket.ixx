@@ -1,5 +1,6 @@
 export module Socket;
 
+/*
 #ifdef _MSC_BUILD
 #define NOMINMAX
 #include <winsock2.h>
@@ -30,9 +31,9 @@ static int GetLastSocketError() {
 
 #ifdef _DEBUG
 #define dbg_print_impl() std::cerr << "error in " << __func__ << ": " << GetLastSocketError() << std::endl
-#else
+#else // RELEASE
 #define dbg_print_impl()
-#endif
+#endif // _DEBUG
 
 #define dbg_print() dbg_print_impl()
 
@@ -70,9 +71,10 @@ public:
 
 };
 
-#endif
+#endif // _MSC_BUILD
 
+*/
 
 export void TestExport();
 
-export import :testpart;
+import :testpart;

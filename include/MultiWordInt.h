@@ -14,6 +14,8 @@
 #include <charconv>
 #include <deque>
 #include <stdfloat>
+#include <bit>
+#include <span>
 
 class bigint_exception {
 
@@ -34,7 +36,7 @@ public:
 	}
 };
 
-template<size_t _words = 4, bool _sign = false>
+template<size_t _words, bool _sign = false>
 struct bigint {
 
 	using count_t = size_t;
@@ -62,12 +64,10 @@ struct bigint {
 	/// Constructor
 
 	constexpr bigint() noexcept {}
-	constexpr bigint(const bigint& from) noexcept { *m_impl = *from.m_impl; }
-	constexpr bigint(bigint&& from) noexcept : m_impl(nullptr) { m_impl = from.m_impl; from.m_impl = nullptr; }
-	template<typename = std::enable_if_t<!IsSigned>>
-	constexpr bigint(std::conditional_t<!IsSigned, word_t, std::nullptr_t> from) noexcept { words()[0] = from; }
-	template<typename = std::enable_if_t<IsSigned>>
-	constexpr bigint(std::conditional_t<IsSigned, sword_t, std::nullptr_t> from) noexcept {
+	constexpr bigint(const bigint& from) noexcept { *m_words = *from.m_words; }
+	constexpr bigint(bigint&& from) noexcept : m_words(nullptr) { m_words = from.m_words; }
+	constexpr bigint(word_t from) noexcept requires(!IsSigned) { words()[0] = from; }
+	constexpr bigint(sword_t from) noexcept requires(IsSigned) {
 		if (from < 0) {
 			from = -from;
 			words()[0] = (word_t)from;
@@ -86,34 +86,27 @@ struct bigint {
 		}
 		*this = bigint(ret);
 	}
-	constexpr explicit bigint(const std::string& text) { this->Parse(text); }
-	constexpr explicit bigint(std::string_view text) { this->Parse(text); }
-	constexpr explicit bigint(const char* text) { this->Parse(text); }
-	template<count_t inputlength>
-	constexpr bigint(const char(&text)[inputlength]) { this->Parse(std::string_view(text, inputlength - 1)); }
-	~bigint() {
-		delete m_impl;
-		m_impl = nullptr;
+	constexpr explicit bigint(std::string_view text) {
+		*this = Parse(text);
 	}
-
-
+	template<count_t inputlength>
+	constexpr bigint(const char(&text)[inputlength]) { *this = Parse(std::string_view(text, inputlength - 1)); }
+	constexpr ~bigint() {
+		delete m_words;
+		m_words = nullptr;
+	}
 
 	/// Assignment Operator Module
 
-	constexpr bigint& operator=(const bigint& from) noexcept { *m_impl = *from.m_impl; return *this; }
-	constexpr bigint& operator=(bigint&& from) noexcept { delete m_impl; m_impl = from.m_impl; from.m_impl = nullptr; return *this; }
-	template<typename = std::enable_if_t<!IsSigned>>
-	constexpr bigint& operator=(word_t from) noexcept {
+	constexpr bigint& operator=(const bigint& from) noexcept { *m_words = *from.m_words; return *this; }
+	constexpr bigint& operator=(bigint&& from) noexcept { delete m_words; m_words = from.m_words; from.m_words = nullptr; return *this; }
+	constexpr bigint& operator=(word_t from) noexcept requires(!IsSigned) {
 		*this = std::move(bigint(from));
 		return *this;
 	}
-	template<typename = std::enable_if_t<IsSigned>>
-	constexpr bigint& operator=(sword_t from) noexcept {
+	constexpr bigint& operator=(sword_t from) noexcept requires(IsSigned) {
 		*this = std::move(bigint(from));
 		return *this;
-	}
-	constexpr bigint& operator=(std::string_view text) noexcept {
-		return this->Parse(text);
 	}
 	
 	constexpr bigint& operator+=(const bigint& rhs) { return AssignAdd(rhs); }
@@ -199,23 +192,14 @@ struct bigint {
 	constexpr bool BitCheck(count_t idx) const {
 		return bits()[idx];
 	}
-	template<typename = std::enable_if_t<IsSigned>>
-	constexpr bool IsNegative() const  {
+	constexpr bool IsNegative() const requires(IsSigned) {
 		return BitCheck(AllBits - 1);
 	}
 	constexpr count_t GetWordLZeroCount(word_t word) const {
-		return _lzcnt_u64(word);
+		return WordBits - std::bit_width(word);
 	}
 	constexpr count_t GetWordNBit(word_t word) const {
-		return WordBits - GetWordLZeroCount(word);
-	}
-	constexpr count_t GetNBit() const {
-		for (count_t i = Words; i-- > 0;) {
-			if (words()[i] != 0) {
-				return i * WordBits + GetWordNBit(words()[i]);
-			}
-		}
-		return AllBits;
+		return std::bit_width(word);
 	}
 	constexpr count_t GetNWord() const {
 		for (count_t i = Words; i-- > 0;) {
@@ -225,18 +209,24 @@ struct bigint {
 		}
 		return Words;
 	}
+	constexpr count_t GetNBit() const {
+		for (count_t i = Words; i-- > 0;) {
+			if (words()[i] != 0) {
+				return i * WordBits + GetWordNBit(words()[i]);
+			}
+		}
+		return AllBits;
+	}
 	constexpr explicit operator word_t() const {
 		return words()[0];
 	}
 	constexpr explicit operator sword_t() const {
 		return words()[0];
 	}
-	template<typename = std::enable_if_t<!IsSigned>>
-	constexpr operator signed_t&() {
+	constexpr operator signed_t&() requires(IsSigned) {
 		return *(signed_t*)(this);
 	}
-	template<typename = std::enable_if_t<IsSigned>>
-	constexpr operator unsigned_t&()  {
+	constexpr operator unsigned_t&() requires(!IsSigned) {
 		return *(unsigned_t*)(this);
 	}
 	constexpr bool AddOutCheck(const bigint& src) const {
@@ -303,9 +293,9 @@ struct bigint {
 	}
 	constexpr bigint& AssignMul(bigint src) {
 		
-		const bigint base = *this;
+		bigint base = *this;
 		*this = 0;
-		
+		/*
 		for (count_t j = 0; j < Words; ++j) {
 			const word_t src_word = src.words()[j];
 			
@@ -334,6 +324,14 @@ struct bigint {
 					false
 				);
 			}
+		}
+		*/
+
+		for (count_t i = 0, nbit = GetNBit(); i < nbit; ++i) {
+			if (src.BitCheck(i)) {
+				*this += base;
+			}
+			base += base;
 		}
 
 		return *this;
@@ -433,15 +431,65 @@ struct bigint {
 
 
 	/// IO Module
+	static constexpr char ToUpper(char c) {
+		return ('a' <= c && c <= 'z') ?
+			(c - ('a' - 'A')) :
+			(c);
+	}
+	static constexpr std::string WordToString(word_t v, int base) {
+		constexpr std::string_view list = "0123456789abcdefghijkmnlopqrstuvwxyz";
+		std::string ret;
+		ret.reserve(WordCharSize);
+		while (v != 0) {
+			ret.push_back(list[v % base]);
+			v /= base;
+		}
+		std::reverse(ret.begin(), ret.end());
+		return ret;
+	}
+	static constexpr word_t CharSpanToWord(std::span<const char> text, int base) {
+		auto it = text.begin();
+		auto end = text.end();
+		word_t ret = 0;
 
-	constexpr bigint& Parse(std::string_view text, int base = 16) {
-		auto proc = text.substr(0, text.find_first_not_of("0123456789abcdefABCDEF"));
+		auto getidx = [&](char c) -> size_t {
+			constexpr std::string_view listlower = "0123456789abcdefghijkmnlopqrstuvwxyz";
+			constexpr std::string_view listupper = "0123456789ABCDEFGHIJKMNLOPQRSTUVWXYZ";
+			size_t idx = listlower.find(c);
+			if (idx != std::string_view::npos) {
+				return idx;
+			}
+			return listupper.find(c);
+		};
+
+		for (; it != end; ++it) {
+			auto& c = *it;
+			size_t idx = getidx(c);
+			switch (c) {
+			case ' ':
+			case ',':
+				continue;
+			}
+
+			if (idx == std::string_view::npos) {
+				break;
+			}
+
+			ret = ret * base + idx;
+		}
+		return ret;
+	}
+	static constexpr bigint Parse(std::string_view text, int base = 16) {
+		auto proc = text.substr(0, text.find_first_not_of("0123456789abcdefghijkmnlopqrstuvwxyzABCDEFGHIJKMNLOPQRSTUVWXYZ"));
 		auto it = proc.rbegin();
 		auto end = proc.rend();
 		count_t c = 0;
 		bool breaked = false;
+
+		bigint ret;
+
 		do {
-			
+
 			auto copybegin = it;
 			auto copyend = it;
 
@@ -454,14 +502,12 @@ struct bigint {
 				copybegin = it;
 			}
 
-			auto test = std::string(copybegin.base(), copyend.base());
-
-			this->words()[c] = std::stoull(test, nullptr, base);
+			ret.words()[c] = CharSpanToWord({copybegin.base(), copyend.base()}, base);
 
 			++c;
 		} while (c < Words && !breaked);
-
-		return *this;
+		
+		return ret;
 	}
 	constexpr std::string ToHex(bool upper = true, bool padding = true) const {
 		std::string ret;
@@ -470,34 +516,30 @@ struct bigint {
 			char* beg = std::begin(buffer);
 			char* end = std::end(buffer);
 
-			auto [p, ec] = std::to_chars(beg, end, w, 16);
-			
-			std::string temp(buffer, p);
+			std::string temp = WordToString(w, 16);
 			
 			std::reverse(temp.begin(), temp.end());
-			temp += std::string(WordCharSize - (p - beg), '0');
+			temp += std::string(WordCharSize - 1 - temp.size(), '0');
 
 			ret += temp;
 		}
 
 		std::reverse(ret.begin(), ret.end());
 
-		if (upper) {
-			std::transform(
-				ret.begin(),
-				ret.end(),
-				ret.begin(),
-				[](char c) -> char {
-					return std::toupper(c);
-				}
-			);
-		}
-
 		if (!padding) {
 			size_t idx = ret.find_first_not_of('0');
 			ret = ret.substr(
 				(idx == std::string::npos) ? 
 				ret.size() - 1 : idx
+			);
+		}
+
+		if (upper) {
+			std::transform(
+				ret.begin(),
+				ret.end(),
+				ret.begin(),
+				ToUpper
 			);
 		}
 
@@ -539,7 +581,6 @@ struct bigint {
 		std::memcpy(ret.data(), words().data(), bytes);
 		return ret;
 	}
-	/*
 	constexpr std::string ToString(int base = 10, bool upper = true, bool padding = false) const {
 		constexpr std::string_view list = "0123456789abcdefghijkmnlopqrstuvwxyz";
 		
@@ -554,15 +595,8 @@ struct bigint {
 
 			auto val = std::conditional_t<IsSigned, sword_t, word_t>(*this);
 
-			std::string temp;
-			temp.resize(word_digits + 1);
-
-			char* beg = std::to_address(temp.begin());
-			char* end = std::to_address(temp.end());
-
-			auto [p, ec] = std::to_chars(beg, end, val, base);
-			temp.erase(p - beg);
-
+			std::string temp = WordToString(val, base);
+			
 			return temp;
 		}
 
@@ -584,20 +618,13 @@ struct bigint {
 			}
 		}
 
-		std::string temp;
-		temp.resize(word_digits + 1);
-
 		do {
 			word_t mod = (word_t)rem.AssignDivMod(word_base).second;
 
-			char* beg = std::to_address(temp.begin());
-			char* end = std::to_address(temp.end());
-
-			auto [p, ec] = std::to_chars(beg, end, mod, base);
-			temp.erase(p - beg);
-
+			std::string temp = WordToString(mod, base);
+			
 			std::reverse(temp.begin(), temp.end());
-			temp += std::string(word_digits - (p - beg), '0');
+			temp += std::string(word_digits - temp.size(), '0');
 
 			ret += temp;
 
@@ -618,16 +645,13 @@ struct bigint {
 				ret.begin(),
 				ret.end(),
 				ret.begin(),
-				[](char c) -> char {
-					return std::toupper(c);
-				}
+				ToUpper
 			);
 		}
 
 		return ret;
 	}
-	*/
-#if defined(_DEBUG) // in Debug Mode
+#ifdef _DEBUG // in Debug Mode
 	const char* DebugView() const {
 		static thread_local std::string buf;
 		buf = ToHex();
@@ -639,15 +663,26 @@ private:
 
 	/// Internal Resource
 
-	arr_t& words() const { return m_impl->m_words; }
-	bits_t& bits() const { return m_impl->m_bits; }
+	constexpr arr_t& words() { return *m_words; }
+	constexpr const arr_t& words() const { return *m_words; }
+	constexpr bits_t& bits() {
+		union {
+			word_t* words{};
+			bits_t* bits;
+		};
+		words = m_words->data();
+		return *bits;
+	}
+	constexpr const bits_t& bits() const {
+		union {
+			const word_t* words{};
+			const bits_t* bits;
+		};
+		words = m_words->data();
+		return *bits;
+	}
 
-	union _impl_resource {
-		arr_t m_words{};
-		bits_t m_bits;
-	};
-
-	_impl_resource* m_impl = new _impl_resource();
+	arr_t* m_words = new arr_t();
 };
 
 #endif // __MULTIBYTEINT_V2_H

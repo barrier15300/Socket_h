@@ -148,6 +148,7 @@
     <ClInclude Include="include\AES128.h" />
     <ClInclude Include="include\common.h" />
     <ClInclude Include="include\ECDSA.h" />
+    <ClInclude Include="include\KeyExchange.h" />
     <ClInclude Include="include\ModInt.h" />
     <ClInclude Include="include\MultiWordInt.h" />
     <ClInclude Include="include\Packet.h" />
