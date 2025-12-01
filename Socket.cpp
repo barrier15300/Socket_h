@@ -103,15 +103,20 @@ int main(int argc, char* argv[]) {
 	
 	KeyExchange Keya;
 	KeyExchange Keyb;
+	
+	auto tp = std::chrono::high_resolution_clock::now();
 
 	auto kE = Keya.GeneratePublicKey();
 	auto kF = Keyb.GeneratePublicKey();
-
+	
 	auto Ga = Keya.MakeSharedKey(kF);
 	auto Gb = Keyb.MakeSharedKey(kE);
-
+	
+	auto ns = std::chrono::duration_cast<std::chrono::nanoseconds>(std::chrono::high_resolution_clock::now() - tp).count();
+	
 	bool same = Ga == Gb;
 
+	std::cout << (double)ns / 1000 / 1000 / 1000 << "s" << std::endl;
 	std::cout << std::boolalpha << "shared key same: " << same << std::endl;
 
 	// arg[1]{ 0 = server, 1 = client }

@@ -240,7 +240,7 @@ struct bigint {
 
 	/// Arithmetic Module
 	
-	constexpr bool AddBase(word_t *dest, word_t src, bool carry) const {
+	static constexpr bool AddBase(word_t *dest, word_t src, bool carry)  {
 		word_t max = *dest > src ? *dest : src;
 		*dest += src + carry;
 		return *dest < max;
@@ -267,35 +267,37 @@ struct bigint {
 		}
 		return *this;
 	}
-	constexpr std::pair<word_t, word_t> MulBase(word_t a, word_t b) const {
+	static constexpr std::pair<word_t, word_t> MulBase(word_t a, word_t b)  {
 		constexpr size_t halfbits = sizeof(halfword_t) * 8;
 		constexpr word_t halfmask = (((word_t)1 << halfbits) - 1);
-		word_t al = a & halfmask;  // a[1][ ]
-		word_t ah = (a >> halfbits) & halfmask; // a[ ][1]
-		word_t bl = b & halfmask;  // b[1][ ]
-		word_t bh = (b >> halfbits) & halfmask; // b[ ][1]
 
-		word_t t1 = al * bl; // t1[1][1][ ][ ]
-		word_t t2 = ah * bh; // t2[ ][ ][?][?]
+		word_t al = a & halfmask;
+		word_t ah = (a >> halfbits) & halfmask;
+		word_t bl = b & halfmask;
+		word_t bh = (b >> halfbits) & halfmask;
 
-		word_t tm1 = al * bh; // tm1[ ][?][?][ ]
-		word_t tm2 = bl * ah; // tm2[ ][1][1][ ]
+		word_t l1 = al * bl;
+		word_t l2 = ah * bl;
+		word_t h1 = al * bh;
+		word_t h2 = ah * bh;
+		
+		word_t t1 = l1;
+		word_t t2 = h2;
 
-		tm1 += (t1 >> halfbits) & halfmask; // tm1[ ][1][1][ ]
+		word_t mls = (l2 & halfmask) + (h1 & halfmask);
+		word_t mhs = (l2 >> halfbits) + (h1 >> halfbits);
 
-		word_t tm = tm1;						// tm[ ][?][?][ ]
-		bool carry = AddBase(&tm, tm2, false);  // tm[ ][1][1][ ]
+		word_t mlc = mls >> halfbits;
 
-		(t1 &= halfmask) |= (tm & halfmask) << halfbits; // t1[1][1][ ][ ] 
-		t2 += ((tm >> halfbits) & halfmask) + carry;	 // t2[ ][ ][1][1]
+		bool c = AddBase(&t1, mls << halfbits, false);
+		c = AddBase(&t2, mhs + mlc, c);
 
-		return { t1, t2 }; // ret[1][1][1][1]
+		return { t1, t2 };
 	}
 	constexpr bigint& AssignMul(bigint src) {
 		
 		bigint base = *this;
 		*this = 0;
-		/*
 		for (count_t j = 0; j < Words; ++j) {
 			const word_t src_word = src.words()[j];
 			
@@ -325,15 +327,7 @@ struct bigint {
 				);
 			}
 		}
-		*/
-
-		for (count_t i = 0, nbit = GetNBit(); i < nbit; ++i) {
-			if (src.BitCheck(i)) {
-				*this += base;
-			}
-			base += base;
-		}
-
+		
 		return *this;
 	}
 	constexpr std::pair<bigint&, bigint> AssignDivMod(bigint src) {
