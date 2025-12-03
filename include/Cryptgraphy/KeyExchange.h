@@ -23,6 +23,7 @@ public:
 		return X.Pow(SecretKey).value;
 	}
 
+	[[nodiscard]]
 	baselenint_t MakeSharedKey(const int_t& pubkey) const {
 		return xmodp(pubkey).Pow(SecretKey).value;
 	}
