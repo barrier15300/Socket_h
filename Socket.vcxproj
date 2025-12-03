@@ -145,14 +145,15 @@
     <ClCompile Include="Socket.cpp" />
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="include\AES128.h" />
+    <ClInclude Include="include\Cryptgraphy\AES128.h" />
     <ClInclude Include="include\common.h" />
-    <ClInclude Include="include\ECDSA.h" />
-    <ClInclude Include="include\ECPoint.h" />
-    <ClInclude Include="include\KeyExchange.h" />
-    <ClInclude Include="include\ModInt.h" />
-    <ClInclude Include="include\MultiWordInt.h" />
-    <ClInclude Include="include\NumberSet.h" />
+    <ClInclude Include="include\Cryptgraphy\common.h" />
+    <ClInclude Include="include\Cryptgraphy\ECDSA.h" />
+    <ClInclude Include="include\Cryptgraphy\ECPoint.h" />
+    <ClInclude Include="include\Cryptgraphy\KeyExchange.h" />
+    <ClInclude Include="include\Cryptgraphy\ModInt.h" />
+    <ClInclude Include="include\Cryptgraphy\MultiWordInt.h" />
+    <ClInclude Include="include\Cryptgraphy\NumberSet.h" />
     <ClInclude Include="include\Packet.h" />
     <ClInclude Include="include\Socket.h" />
     <ClInclude Include="module\Socket.ixx" />

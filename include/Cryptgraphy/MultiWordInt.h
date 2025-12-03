@@ -1,19 +1,5 @@
 ﻿#pragma once
-#include <algorithm>
-#include <exception>
-#include <cstdint>
-#include <bitset>
-#include <iterator>
-#include <array>
-#include <vector>
-#include <cmath>
-#include <string>
-#include <memory>
-#include <charconv>
-#include <deque>
-#include <stdfloat>
-#include <bit>
-#include <span>
+#include "common.h"
 
 class bigint_exception {
 
@@ -90,7 +76,8 @@ struct bigint {
 		const count_t copycount = (arr.size() * sizeof(T) < totalbytes) ? arr.size() : totalbytes / sizeof(T);
 		std::fill(words().begin(), words().end(), 0);
 		std::memcpy(words().data(), arr.data(), copycount * sizeof(T));
-	}	constexpr explicit bigint(std::string_view text) {
+	}
+	constexpr explicit bigint(std::string_view text) {
 		*this = Parse(text);
 	}
 	template<count_t inputlength>

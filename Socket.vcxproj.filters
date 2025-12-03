@@ -38,19 +38,19 @@
     <ClInclude Include="include\Socket.h">
       <Filter>ヘッダー ファイル</Filter>
     </ClInclude>
-    <ClInclude Include="include\AES128.h">
+    <ClInclude Include="include\Cryptgraphy\AES128.h">
       <Filter>ヘッダー ファイル</Filter>
     </ClInclude>
     <ClInclude Include="include\Packet.h">
       <Filter>ヘッダー ファイル</Filter>
     </ClInclude>
-    <ClInclude Include="include\MultiWordInt.h">
+    <ClInclude Include="include\Cryptgraphy\MultiWordInt.h">
       <Filter>ヘッダー ファイル</Filter>
     </ClInclude>
-    <ClInclude Include="include\ModInt.h">
+    <ClInclude Include="include\Cryptgraphy\ModInt.h">
       <Filter>ヘッダー ファイル</Filter>
     </ClInclude>
-    <ClInclude Include="include\ECDSA.h">
+    <ClInclude Include="include\Cryptgraphy\ECDSA.h">
       <Filter>ヘッダー ファイル</Filter>
     </ClInclude>
     <ClInclude Include="include\common.h">
@@ -59,13 +59,16 @@
     <ClInclude Include="module\Socket.ixx">
       <Filter>ヘッダー ファイル</Filter>
     </ClInclude>
-    <ClInclude Include="include\KeyExchange.h">
+    <ClInclude Include="include\Cryptgraphy\KeyExchange.h">
       <Filter>ヘッダー ファイル</Filter>
     </ClInclude>
-    <ClInclude Include="include\ECPoint.h">
+    <ClInclude Include="include\Cryptgraphy\ECPoint.h">
       <Filter>ヘッダー ファイル</Filter>
     </ClInclude>
-    <ClInclude Include="include\NumberSet.h">
+    <ClInclude Include="include\Cryptgraphy\NumberSet.h">
+      <Filter>ヘッダー ファイル</Filter>
+    </ClInclude>
+    <ClInclude Include="include\Cryptgraphy\common.h">
       <Filter>ヘッダー ファイル</Filter>
     </ClInclude>
   </ItemGroup>

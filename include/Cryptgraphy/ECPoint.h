@@ -1,6 +1,5 @@
 #pragma once
-#include <utility>
-#include "NumberSet.h"
+#include "common.h"
 
 template<IntegralSet T>
 class WeierstrassParameter {

@@ -24,7 +24,7 @@
 namespace NetIO {
 #endif // SOCKET_H_USE_NAMESPACE
 
-#include "AES128.h"
+#include "Cryptgraphy/AES128.h"
 #include "Packet.h"
 
 /// <summary>

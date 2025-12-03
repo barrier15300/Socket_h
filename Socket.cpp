@@ -95,10 +95,7 @@ struct ContainerInVariable {
 	}
 };
 
-
-#include "include/MultiWordInt.h"
-#include "include/KeyExchange.h"
-#include "include/ECDSA.h"
+#include "include/Cryptgraphy/ECDSA.h"
 
 int main(int argc, char* argv[]) {
 	
