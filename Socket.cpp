@@ -94,37 +94,42 @@ struct ContainerInVariable {
 		return view;
 	}
 };
-#include "include/KeyExchange.h"
+#include "include/KeyManager.h"
 
 int main(int argc, char* argv[]) {
 	
-	KeyFactoryECDH Keya;
-	KeyFactoryECDH Keyb;
-	
-	auto tp = std::chrono::high_resolution_clock::now();
-	
-	auto kE = Keya.GeneratePublicKey();
-	auto kF = Keyb.GeneratePublicKey();
-	
-	auto Ga = Keya.MakeSharedKey(kF);
-	auto Gb = Keyb.MakeSharedKey(kE);
-	
-	auto ns = std::chrono::duration_cast<std::chrono::nanoseconds>(std::chrono::high_resolution_clock::now() - tp).count();
-	
-	bool same = Ga == Gb;
-	
-	std::cout << (double)ns / 1000 / 1000 / 1000 << "s" << std::endl;
-	std::cout << std::boolalpha << "shared key same: " << same << std::endl;
-	
-	for (auto&& b : Ga) {
-		std::cout << std::hex << std::setw(2) << std::setfill('0') << std::right << (int)b;
+	//KeyManager Keya;
+	//KeyManager Keyb;
+	//
+	//auto tp = std::chrono::high_resolution_clock::now();
+	//
+	//auto kE = Keya.MakeQKey();
+	//auto kF = Keyb.MakeQKey();
+	//
+	//auto Ga = Keya.MakeSharedKey(kF);
+	//auto Gb = Keyb.MakeSharedKey(kE);
+	//
+	//auto ns = std::chrono::duration_cast<std::chrono::nanoseconds>(std::chrono::high_resolution_clock::now() - tp).count();
+	//
+	//bool same = Ga == Gb;
+	//
+	//std::cout << (double)ns / 1000 / 1000 / 1000 << "s" << std::endl;
+	//std::cout << std::boolalpha << "shared key same: " << same << std::endl;
+	//
+	//for (auto&& b : Ga) {
+	//	std::cout << std::hex << std::setw(2) << std::setfill('0') << std::right << (int)b;
+	//}
+	//std::cout << std::endl;
+	//
+	//for (auto&& b : Gb) {
+	//	std::cout << std::hex << std::setw(2) << std::setfill('0') << std::right << (int)b;
+	//}
+	//std::cout << std::endl;
+
+	for (uint64_t i = 0; i < 128; ++i) {
+		std::string message = "Very Very Long Message" + std::string((char*)&i, (char*)&i + 16);
+		auto ret = ECDSA::Hasher({message.begin(), message.end()});
 	}
-	std::cout << std::endl;
-	
-	for (auto&& b : Gb) {
-		std::cout << std::hex << std::setw(2) << std::setfill('0') << std::right << (int)b;
-	}
-	std::cout << std::endl;
 
 	//using int_t = bigint<8>;
 	//using modint_t = ModInt<int_t>;

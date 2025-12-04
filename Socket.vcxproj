@@ -1,4 +1,4 @@
-<?xml version="1.0" encoding="utf-8"?>
+﻿<?xml version="1.0" encoding="utf-8"?>
 <Project DefaultTargets="Build" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <ItemGroup Label="ProjectConfigurations">
     <ProjectConfiguration Include="Debug|Win32">
@@ -150,7 +150,7 @@
     <ClInclude Include="include\Cryptgraphy\common.h" />
     <ClInclude Include="include\Cryptgraphy\ECDSA.h" />
     <ClInclude Include="include\Cryptgraphy\ECPoint.h" />
-    <ClInclude Include="include\KeyExchange.h" />
+    <ClInclude Include="include\KeyManager.h" />
     <ClInclude Include="include\Cryptgraphy\ModInt.h" />
     <ClInclude Include="include\Cryptgraphy\MultiWordInt.h" />
     <ClInclude Include="include\Cryptgraphy\NumberSet.h" />

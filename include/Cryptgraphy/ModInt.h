@@ -127,7 +127,6 @@ struct ModInt {
 		if (neg) {
 			value += GetP();
 		}
-		value %= GetP();
 		return *this;
 	}
 	constexpr ModInt& operator*=(const ModInt& rhs) {
