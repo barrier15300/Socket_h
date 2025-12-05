@@ -67,8 +67,8 @@ struct bigint {
 		using T = std::remove_cvref_t<std::ranges::range_value_t<R>>;
 		constexpr count_t totalbytes = WordBytes;
 		const count_t copycount = (arr.size() * sizeof(T) < totalbytes) ? arr.size() : totalbytes / sizeof(T);
-		std::fill(words().begin(), words().end(), 0);
-		std::memcpy(words().data(), arr.data(), copycount * sizeof(T));
+		std::fill(m_words().begin(), m_words().end(), 0);
+		std::memcpy(m_words().data(), arr.data(), copycount * sizeof(T));
 	}
 	constexpr explicit bigint(std::string_view text) {
 		*this = Parse(text);
@@ -544,7 +544,7 @@ struct bigint {
 		count_t n = this->GetNBit();
 		count_t bytes = n / 8 + 1;
 		ret.resize(bytes);
-		std::memcpy(ret.data(), words().data(), bytes);
+		std::memcpy(ret.data(), m_words().data(), bytes);
 		return ret;
 	}
 	constexpr std::string ToString(int base = 10, bool upper = true, bool padding = false) const {

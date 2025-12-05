@@ -127,8 +127,11 @@ int main(int argc, char* argv[]) {
 	//std::cout << std::endl;
 
 	for (uint64_t i = 0; i < 128; ++i) {
-		std::string message = "Very Very Long Message" + std::string((char*)&i, (char*)&i + 16);
-		auto ret = ECDSA::Hasher({message.begin(), message.end()});
+		std::string message = "Very Very Long Message" + std::to_string(i);
+		auto ret = SHAKE256::Hasher256({message.begin(), message.end()});
+		for (auto&& c : ret) {
+			std::cout << std::hex << std::right << std::setw(2) << std::setfill('0') << (int)c;
+		}
 	}
 
 	//using int_t = bigint<8>;

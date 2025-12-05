@@ -3,6 +3,7 @@
 #include "ModInt.h"
 #include "ECPoint.h"
 #include "RandomGenerator.h"
+#include "SHAKE256.h"
 
 struct secp112r1 {};
 struct secp112r2 {};
@@ -288,40 +289,6 @@ public:
 
 	void Sign(const baseint_t& privateKey, const Cryptgraphy::bytearray& message) {	
 
-	}
-
-	static message_t Hasher(const Cryptgraphy::bytearray& message) {
-		std::unique_ptr engine = std::make_unique<std::mt19937_64>();
-		engine->seed(std::mt19937_64::default_seed);
-
-		uint64_t seed = (*engine)();
-		for (uint64_t c : message) {
-			uint64_t s1 = seed;
-			uint64_t s2 = (s1 >> (~c & 0xf)) | (s1 << ((~c & 0xf)));
-			uint64_t s3 = (s2 << (c & 0x3f)) | (s2 >> (64 - (c & 0x3f)));
-			uint64_t s4 = s3 ^
-				(~((c << 0) |
-				(~c << 8) |
-				(c << 16) |
-				(~c << 24) |
-				(c << 32) |
-				(~c << 40) |
-				(c << 48) |
-				(~c << 56)) + s2);
-			seed = s2 ^ (s4 - s3);
-		}
-
-		engine->seed(seed);
-		printf("%016llx", seed);
-		message_t ret{};
-		uint64_t temp[ret.size()]{};
-
-		for (auto&& elem : temp) {
-			elem = (*engine)();
-		}
-		std::memcpy(ret.data(), temp, ret.size());
-
-		return ret;
 	}
 
 };

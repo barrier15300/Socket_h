@@ -18,14 +18,14 @@ class AES128 {
 	
 public:
 
-	using byte_t = SocketUtil::byte_t;
+	using byte_t = Cryptgraphy::byte_t;
 
 	template<size_t keybytes>
 	using cbytearray = std::array<byte_t, keybytes>;
 	
-	using bytearray = SocketUtil::bytearray;
-	using byte_view = SocketUtil::byte_view;
-	using byte_ref = SocketUtil::byte_ref;
+	using bytearray = Cryptgraphy::bytearray;
+	using byte_view = Cryptgraphy::byte_view;
+	using byte_ref = Cryptgraphy::byte_ref;
 	
 	static constexpr size_t block_size = 0x10;
 	static constexpr size_t block_size_mask = block_size - 1;

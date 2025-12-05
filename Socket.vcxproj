@@ -150,6 +150,7 @@
     <ClInclude Include="include\Cryptgraphy\common.h" />
     <ClInclude Include="include\Cryptgraphy\ECDSA.h" />
     <ClInclude Include="include\Cryptgraphy\ECPoint.h" />
+    <ClInclude Include="include\Cryptgraphy\SHAKE256.h" />
     <ClInclude Include="include\KeyManager.h" />
     <ClInclude Include="include\Cryptgraphy\ModInt.h" />
     <ClInclude Include="include\Cryptgraphy\MultiWordInt.h" />
