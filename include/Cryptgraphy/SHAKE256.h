@@ -100,13 +100,13 @@ public:
 		if ((t & 0xff) == 0) {
 			return true;
 		}
-		uint32_t R = 0b10000000;
+		uint32_t R = 0b00000001;
 		for (size_t i = 0; i < (t & 0xff); ++i) {
-			R = std::rotl(R, 1);
-			R |= (R & (1 << 0)) ^ (R & (1 << 8));
-			R |= (R & (1 << 4)) ^ (R & (1 << 8));
-			R |= (R & (1 << 5)) ^ (R & (1 << 8));
-			R |= (R & (1 << 6)) ^ (R & (1 << 8));
+			R = R << 1;
+			R |= (((R >> 0) & 1) ^ ((R >> 8) & 1)) << 0;
+			R |= (((R >> 4) & 1) ^ ((R >> 8) & 1)) << 4;
+			R |= (((R >> 5) & 1) ^ ((R >> 8) & 1)) << 5;
+			R |= (((R >> 6) & 1) ^ ((R >> 8) & 1)) << 6;
 			R &= 0xff;
 		}
 		return R & 1;
@@ -148,9 +148,8 @@ public:
 		
 		// step 3
 		for (size_t t = 0; t < 24; ++t) {
-			for (size_t z = 0; z < w; ++z) {
-				ret(pos.first, pos.second, z) = a(pos.first, pos.second, (z - (t + 1) * (t + 2) / 2) & (w - 1));
-			}
+			size_t temp = (((t + 1) * (t + 2)) >> 1) & (w - 1);
+			ret(pos.first, pos.second) = std::rotr(a(pos.first, pos.second), temp);
 			pos = {
 				pos.second,
 				(2 * pos.first + 3 * pos.second) % 5
@@ -210,8 +209,8 @@ public:
 		constexpr size_t r_8 = r / 8;
 		size_t pad = r_8 - (N.size() % r_8);
 		bytearray p(pad);
-		p.front() |= 0b00000001;
-		p.back() |= 0b10000000;
+		p.front() ^= 0x1f;
+		p.back() ^= 0x80;
 		bytearray P;
 		P.reserve(N.size() + p.size());
 		P.insert(P.end(), N.begin(), N.end());
@@ -231,6 +230,7 @@ public:
 			S = KECCAKp<24>(temp);
 		}
 		bytearray Z;
+		Z.reserve(r / 8);
 		while (Z.size() < outlen) {
 			byte_view t(S.begin(), r / 8);
 			Z.insert(Z.end(), t.begin(), t.end());

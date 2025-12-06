@@ -126,12 +126,20 @@ int main(int argc, char* argv[]) {
 	//}
 	//std::cout << std::endl;
 
-	for (uint64_t i = 0; i < 128; ++i) {
-		std::string message = "Very Very Long Message" + std::to_string(i);
-		auto ret = SHAKE256::Hasher256({message.begin(), message.end()});
-		for (auto&& c : ret) {
-			std::cout << std::hex << std::right << std::setw(2) << std::setfill('0') << (int)c;
-		}
+	std::string message = "";
+	Cryptgraphy::bytearray data{message.begin(), message.end()};
+
+	auto tp = std::chrono::high_resolution_clock::now();
+
+	auto ret = SHAKE256::HasherN(data, 64);
+	
+	auto ns = std::chrono::duration_cast<std::chrono::nanoseconds>(std::chrono::high_resolution_clock::now() - tp).count();
+
+	std::cout << (double)ns / 1000 / 1000 << "ms" << std::endl;
+	std::cout << std::boolalpha << "hash: ";
+
+	for (auto&& c : ret) {
+		std::cout << std::hex << std::right << std::setw(2) << std::setfill('0') << (int)c;
 	}
 
 	//using int_t = bigint<8>;
