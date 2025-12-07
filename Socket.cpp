@@ -126,7 +126,7 @@ int main(int argc, char* argv[]) {
 	//}
 	//std::cout << std::endl;
 
-	std::string message = "";
+	std::string message = "0123456789abcdef";
 	Cryptgraphy::bytearray data{message.begin(), message.end()};
 
 	auto tp = std::chrono::high_resolution_clock::now();

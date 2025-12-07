@@ -19,8 +19,13 @@ public:
 
 		constexpr state() {}
 		constexpr state(const bytearray& from) {
-			for (size_t i = 0, c = from.size(); i < c; ++i) {
-				*((byte_t*)m_words.data() + i) = from[i];
+			auto it = (byte_t*)(m_words.data());
+			auto end = (byte_t*)(m_words.data() + b);
+			for (auto&& c : from) {
+				*it = c;
+				if (++it == end) {
+					break;
+				}
 			}
 		}
 
@@ -82,32 +87,31 @@ public:
 		}
 
 		constexpr operator bytearray() const {
-			bytearray ret(sizeof(m_words));
-			for (size_t i = 0, c = ret.size(); i < c; ++i) {
-				ret[i] = *((byte_t*)m_words.data() + i);
+			bytearray ret;
+			ret.reserve(sizeof(m_words));
+			for (size_t i = 0, c = sizeof(m_words); i < c; ++i) {
+				ret.push_back(*((byte_t*)m_words.data() + i));
 			}
 			return ret;
 		}
 
 		constexpr size_t GetIdx(size_t x, size_t y) const {
-			return (x + 5 * y);
+			return x + 5 * y;
 		}
 
 		std::array<word_t, b> m_words{};
 	};
 
 	static constexpr bool rc(size_t t) {
-		if ((t & 0xff) == 0) {
+		size_t m = t % 255;
+		if (m == 0) {
 			return true;
 		}
-		uint32_t R = 0b00000001;
-		for (size_t i = 0; i < (t & 0xff); ++i) {
-			R = R << 1;
-			R |= (((R >> 0) & 1) ^ ((R >> 8) & 1)) << 0;
-			R |= (((R >> 4) & 1) ^ ((R >> 8) & 1)) << 4;
-			R |= (((R >> 5) & 1) ^ ((R >> 8) & 1)) << 5;
-			R |= (((R >> 6) & 1) ^ ((R >> 8) & 1)) << 6;
-			R &= 0xff;
+		uint8_t R = 0b00000001;
+		for (size_t i = 0; i < m; ++i) {
+			bool b = R & 0b10000000;
+			R <<= 1;
+			if (b) { R ^= 0b01110001; };
 		}
 		return R & 1;
 	}
@@ -125,7 +129,7 @@ public:
 
 		// step 2
 		for (size_t x = 0; x < 5; ++x) {
-			D[x] = C[(x - 1) % 5] ^ std::rotr(C[(x + 1) % 5], 1);
+			D[x] = C[(x + 4) % 5] ^ std::rotl(C[(x + 1) % 5], 1);
 		}
 
 		// step 3
@@ -147,9 +151,9 @@ public:
 		std::pair pos{1, 0};
 		
 		// step 3
-		for (size_t t = 0; t < 24; ++t) {
+		for (size_t t = 0; t <= 23; ++t) {
 			size_t temp = (((t + 1) * (t + 2)) >> 1) & (w - 1);
-			ret(pos.first, pos.second) = std::rotr(a(pos.first, pos.second), temp);
+			ret(pos.first, pos.second) = std::rotl(a(pos.first, pos.second), temp);
 			pos = {
 				pos.second,
 				(2 * pos.first + 3 * pos.second) % 5
@@ -184,9 +188,15 @@ public:
 	}
 	static constexpr state iota(state&& A, size_t ir) {
 		word_t RC = 0;
-
-		for (size_t j = 0; j < l; ++j) {
-			RC |= (word_t)rc(j + 7 * ir) << ((2 << j) - 1);
+		
+		for (size_t j = 0; j <= l; ++j) {
+			size_t idx = (((size_t)1 << j) - 1);
+			if (rc(j + 7 * ir)) {
+				RC |= (word_t)1 << idx;
+			}
+			else {
+				RC &= ~((word_t)1 << idx);
+			}
 		}
 
 		A(0, 0) ^= RC;
@@ -200,7 +210,7 @@ public:
 	template<size_t nr>
 	static constexpr bytearray KECCAKp(const bytearray& s) {
 		state A = s;
-		for (size_t i = 12 + 2 * l - nr, c = 12 + 2 * l; i < c; ++i) {
+		for (size_t i = 12 + 2 * l - nr, c = 12 + 2 * l; i != c; ++i) {
 			A = Round(A, i);
 		}
 		return (bytearray)A;
@@ -208,34 +218,46 @@ public:
 	static constexpr bytearray SPONGE(const bytearray& N, size_t outlen) {
 		constexpr size_t r_8 = r / 8;
 		size_t pad = r_8 - (N.size() % r_8);
+		
 		bytearray p(pad);
 		p.front() ^= 0x1f;
 		p.back() ^= 0x80;
+		
 		bytearray P;
 		P.reserve(N.size() + p.size());
 		P.insert(P.end(), N.begin(), N.end());
 		P.insert(P.end(), p.begin(), p.end());
+
 		size_t n = P.size() / r_8;
 		constexpr size_t c = 1600 - r;
 		bytearray S(1600 / 8);
+		
 		for (size_t i = 0; i < n; ++i) {
 			byte_view t(P.begin() + (i * r_8), r_8);
-			bytearray s;
-			s.reserve(S.size());
-			s.insert(s.end(), t.begin(), t.end());
-			s.insert(s.end(), c / 8, 0);
-			bytearray temp;
-			temp.reserve(s.size());
-			std::ranges::transform(S, s, std::back_inserter(temp), [](byte_t a, byte_t b) -> byte_t { return a ^ b; });
-			S = KECCAKp<24>(temp);
+		
+			state pS = S;
+			state ps = {{t.begin(), t.end()}};
+
+			for (size_t y = 0; y < 5; ++y) {
+				for (size_t x = 0; x < 5; ++x) {
+					pS(x, y) ^= ps(x, y);
+				}
+			}
+
+			S = KECCAKp<24>(pS);
 		}
+		
 		bytearray Z;
-		Z.reserve(r / 8);
+		Z.reserve(r_8);
+		
 		while (Z.size() < outlen) {
-			byte_view t(S.begin(), r / 8);
+			byte_view t(S.begin(), r_8);
+			
 			Z.insert(Z.end(), t.begin(), t.end());
+			
 			S = KECCAKp<24>(S);
 		}
+		
 		return bytearray(Z.begin(), Z.begin() + outlen);
 	}
 
