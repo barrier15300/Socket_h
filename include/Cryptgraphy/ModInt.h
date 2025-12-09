@@ -181,16 +181,16 @@ struct ModInt {
 	constexpr friend ModInt operator*(ModInt lhs, const ModInt& rhs) { return lhs *= rhs; }
 	constexpr friend ModInt operator/(ModInt lhs, const ModInt& rhs) { return lhs /= rhs; }
 	constexpr friend ModInt operator%(ModInt lhs, const ModInt& rhs) { return lhs %= rhs; }
-	constexpr friend ModInt operator+(const T& lhs, const ModInt& rhs) { Factory make(*rhs.P); return make(lhs) += rhs; }
-	constexpr friend ModInt operator-(const T& lhs, const ModInt& rhs) { Factory make(*rhs.P); return make(lhs) -= rhs; }
-	constexpr friend ModInt operator*(const T& lhs, const ModInt& rhs) { Factory make(*rhs.P); return make(lhs) *= rhs; }
-	constexpr friend ModInt operator/(const T& lhs, const ModInt& rhs) { Factory make(*rhs.P); return make(lhs) /= rhs; }
-	constexpr friend ModInt operator%(const T& lhs, const ModInt& rhs) { Factory make(*rhs.P); return make(lhs) %= rhs; }
-	constexpr friend ModInt operator+(ModInt lhs, const T& rhs) { Factory make(*lhs.P); return lhs += make(rhs); }
-	constexpr friend ModInt operator-(ModInt lhs, const T& rhs) { Factory make(*lhs.P); return lhs -= make(rhs); }
-	constexpr friend ModInt operator*(ModInt lhs, const T& rhs) { Factory make(*lhs.P); return lhs *= make(rhs); }
-	constexpr friend ModInt operator/(ModInt lhs, const T& rhs) { Factory make(*lhs.P); return lhs /= make(rhs); }
-	constexpr friend ModInt operator%(ModInt lhs, const T& rhs) { Factory make(*lhs.P); return lhs %= make(rhs); }
+	constexpr friend ModInt operator+(const T& lhs, const ModInt& rhs) { Factory make(rhs.GetP()); return make(lhs) += rhs; }
+	constexpr friend ModInt operator-(const T& lhs, const ModInt& rhs) { Factory make(rhs.GetP()); return make(lhs) -= rhs; }
+	constexpr friend ModInt operator*(const T& lhs, const ModInt& rhs) { Factory make(rhs.GetP()); return make(lhs) *= rhs; }
+	constexpr friend ModInt operator/(const T& lhs, const ModInt& rhs) { Factory make(rhs.GetP()); return make(lhs) /= rhs; }
+	constexpr friend ModInt operator%(const T& lhs, const ModInt& rhs) { Factory make(rhs.GetP()); return make(lhs) %= rhs; }
+	constexpr friend ModInt operator+(ModInt lhs, const T& rhs) { Factory make(lhs.GetP()); return lhs += make(rhs); }
+	constexpr friend ModInt operator-(ModInt lhs, const T& rhs) { Factory make(lhs.GetP()); return lhs -= make(rhs); }
+	constexpr friend ModInt operator*(ModInt lhs, const T& rhs) { Factory make(lhs.GetP()); return lhs *= make(rhs); }
+	constexpr friend ModInt operator/(ModInt lhs, const T& rhs) { Factory make(lhs.GetP()); return lhs /= make(rhs); }
+	constexpr friend ModInt operator%(ModInt lhs, const T& rhs) { Factory make(lhs.GetP()); return lhs %= make(rhs); }
 	
 	constexpr friend ModInt operator<<(ModInt lhs, size_t shift) { return lhs <<= shift; }
 	constexpr friend ModInt operator>>(ModInt lhs, size_t shift) { return lhs >>= shift; }
@@ -198,12 +198,12 @@ struct ModInt {
 	constexpr friend ModInt operator&(ModInt lhs, const ModInt& rhs) { return lhs &= rhs; }
 	constexpr friend ModInt operator|(ModInt lhs, const ModInt& rhs) { return lhs |= rhs; }
 	constexpr friend ModInt operator^(ModInt lhs, const ModInt& rhs) { return lhs ^= rhs; }
-	constexpr friend ModInt operator&(const T& lhs, const ModInt& rhs) { Factory make(*rhs.P); return make(lhs) &= rhs; }
-	constexpr friend ModInt operator|(const T& lhs, const ModInt& rhs) { Factory make(*rhs.P); return make(lhs) |= rhs; }
-	constexpr friend ModInt operator^(const T& lhs, const ModInt& rhs) { Factory make(*rhs.P); return make(lhs) ^= rhs; }
-	constexpr friend ModInt operator&(ModInt lhs, const T& rhs) { Factory make(*lhs.P); return lhs &= make(rhs); }
-	constexpr friend ModInt operator|(ModInt lhs, const T& rhs) { Factory make(*lhs.P); return lhs |= make(rhs); }
-	constexpr friend ModInt operator^(ModInt lhs, const T& rhs) { Factory make(*lhs.P); return lhs ^= make(rhs); }
+	constexpr friend ModInt operator&(const T& lhs, const ModInt& rhs) { Factory make(rhs.GetP()); return make(lhs) &= rhs; }
+	constexpr friend ModInt operator|(const T& lhs, const ModInt& rhs) { Factory make(rhs.GetP()); return make(lhs) |= rhs; }
+	constexpr friend ModInt operator^(const T& lhs, const ModInt& rhs) { Factory make(rhs.GetP()); return make(lhs) ^= rhs; }
+	constexpr friend ModInt operator&(ModInt lhs, const T& rhs) { Factory make(lhs.GetP()); return lhs &= make(rhs); }
+	constexpr friend ModInt operator|(ModInt lhs, const T& rhs) { Factory make(lhs.GetP()); return lhs |= make(rhs); }
+	constexpr friend ModInt operator^(ModInt lhs, const T& rhs) { Factory make(lhs.GetP()); return lhs ^= make(rhs); }
 
 	constexpr friend bool operator< (const ModInt& lhs, const ModInt& rhs) { return lhs.value < rhs.value; }
 	constexpr friend bool operator> (const ModInt& lhs, const ModInt& rhs) { return rhs < lhs; }

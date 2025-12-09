@@ -280,21 +280,44 @@ struct ECProject {
 		Factory make(GetParam());
 
 		bool first = true;
-		ECProject ret = make();
 		ECProject base = *this;
+		ECProject ret = base;
 
-		do {
-			if ((s & 1) == (int)1) {
-				if (first) {
-					ret = base;
-					first = false;
-				}
-				else {
-					ret = ret.Add(base);
-				}
+		size_t nbit = 0;
+		auto t = s;
+		while (t != (int)0) {
+			++nbit;
+			t >>= 1;
+		}
+		
+		if (nbit == 0) {
+			return make();
+		}
+		
+		t = s / s;
+		t <<= nbit - 2;
+		
+		for (size_t i = 1; i < nbit; ++i) {
+			ret = ret.Double();
+			if ((s & t) != (int)0) {
+				ret = ret.Add(base);
 			}
-			base = base.Double();
-		} while ((s >>= 1) != (int)0);
+			t >>= 1;
+		}
+
+		//do {
+		//	if ((s & 1) == (int)1) {
+		//		if (first) {
+		//			ret = base;
+		//			first = false;
+		//		}
+		//		else {
+		//			ret = ret.Add(base);
+		//		}
+		//		//printf("x=%s, y=%s, z=%s\n", ret.x.value.ToString(16).c_str(), ret.y.value.ToString(16).c_str(), ret.z.value.ToString(16).c_str());
+		//	}
+		//	base = base.Double();
+		//} while ((s >>= 1) != (int)0);
 
 		return ret;
 	}

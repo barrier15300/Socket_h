@@ -126,9 +126,9 @@ int main(int argc, char* argv[]) {
 	//}
 	//std::cout << std::endl;
 
-	KeyManager Key;
+	KeyManager::baseint_t D = "E6A27C244C46D0AAC9AFB4EA7CE9020D82E2D975EA1FEE89F81FCADEAE4D9153";
 	std::string message = "i'm barrier.";
-	auto v = ECDSA::Sign(Key.GetSecretKey(), {message.begin(), message.end()});
+	auto v = ECDSA::Sign(D, {message.begin(), message.end()});
 
 	bool ret = ECDSA::Verify(v, {message.begin(), message.end()});
 
