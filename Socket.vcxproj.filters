@@ -71,7 +71,7 @@
     <ClInclude Include="include\Cryptgraphy\RandomGenerator.h">
       <Filter>ヘッダー ファイル</Filter>
     </ClInclude>
-    <ClInclude Include="include\KeyManager.h">
+    <ClInclude Include="include\Cryptgraphy\KeyManager.h">
       <Filter>ヘッダー ファイル</Filter>
     </ClInclude>
     <ClInclude Include="include\Cryptgraphy\SHAKE256.h">

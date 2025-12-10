@@ -1,6 +1,5 @@
 #pragma once
 #include "Cryptgraphy/ECDSA.h"
-#include "Packet.h"
 
 class KeyFactoryDH {
 public:
@@ -15,31 +14,14 @@ public:
 	[[nodiscard]]
 	static Cryptgraphy::bytearray GeneratePublicKey(const baseint_t& D) {
 		auto&& pub = (baseint_t)X.Pow(D).value;
-		
-		Cryptgraphy::bytearray ret;
-		ret.reserve(baseint_t::WordBytes);
-
-		Packet::StoreBytes(ret, pub.words());
-
-		return ret;
+		return pub.ToBytes();
 	}
 
 	[[nodiscard]]
 	static Cryptgraphy::bytearray MakeSharedKey(const baseint_t& D, const Cryptgraphy::bytearray& fromQ) {
-		baseint_t temp;
-		Cryptgraphy::byte_view view(fromQ);
-
-		Packet::LoadBytes(view, temp.words());
-		modint_t Q = xmodp(temp);
-
+		modint_t Q = xmodp(fromQ);
 		auto&& equalQ = (baseint_t)Q.Pow(D).value;
-
-		Cryptgraphy::bytearray ret;
-		ret.reserve(baseint_t::WordBytes);
-
-		Packet::StoreBytes(ret, equalQ.words());
-
-		return ret;
+		return equalQ.ToBytes();
 	}
 };
 
@@ -49,40 +31,21 @@ public:
 	[[nodiscard]]
 	static Cryptgraphy::bytearray GeneratePublicKey(const baseint_t& D) {
 		auto&& pubpoint = projective_t(G).Scaler(xmodp(D));
-
 		auto&& x = (baseint_t)pubpoint.ToAffin().x.value;
-
-		Cryptgraphy::bytearray ret;
-
-		ret.reserve(baseint_t::WordBytes);
-
-		Packet::StoreBytes(ret, x.words());
-
-		return ret;
+		return x.ToBytes();
 	}
 
 	[[nodiscard]]
 	static Cryptgraphy::bytearray MakeSharedKey(const baseint_t& D, const Cryptgraphy::bytearray& fromQ) {
-		baseint_t temp;
-		Cryptgraphy::byte_view view(fromQ);
-
-		Packet::LoadBytes(view, temp.words());
-
 		affin_t Q = affin(
-			xmodp(temp),
-			G.GetParam().GetY(xmodp(temp)).Sqrt()
+			xmodp(fromQ),
+			G.GetParam().GetY(xmodp(fromQ)).Sqrt()
 		);
 
 		auto&& equalQ = projective_t(Q).Scaler(xmodp(D));
 		auto x = (baseint_t)equalQ.ToAffin().x.value;
 
-		Cryptgraphy::bytearray ret;
-
-		ret.reserve(baseint_t::WordBytes);
-
-		Packet::StoreBytes(ret, x.words());
-
-		return ret;
+		return x.ToBytes();
 	}
 };
 

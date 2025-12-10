@@ -94,7 +94,7 @@ struct ContainerInVariable {
 		return view;
 	}
 };
-#include "include/KeyManager.h"
+#include "include/Cryptgraphy/KeyManager.h"
 
 int main(int argc, char* argv[]) {
 	
@@ -126,11 +126,22 @@ int main(int argc, char* argv[]) {
 	//}
 	//std::cout << std::endl;
 
-	KeyManager::baseint_t D = "E6A27C244C46D0AAC9AFB4EA7CE9020D82E2D975EA1FEE89F81FCADEAE4D9153";
-	std::string message = "i'm barrier.";
-	auto v = ECDSA::Sign(D, {message.begin(), message.end()});
+	KeyManager key;
+	std::string message = "I have skill is write low level programing language.";
 
-	bool ret = ECDSA::Verify(v, {message.begin(), message.end()});
+	auto q = ECDSA::MakePublicKey(key.GetSecretKey());
+
+	auto v = ECDSA::Sign(key.GetSecretKey(), {message.begin(), message.end()});
+
+	bool ret = ECDSA::Verify(q, v, {message.begin(), message.end()});
+
+	std::cout << "message: \"" << message << "\"" << std::endl;
+	std::cout << "Q: {" << q.x.value.ToString(16) << ", " << q.y.value.ToString(16) << "}" << std::endl;
+	std::cout << "(r, s)(bytes): ";
+	for (auto&& b : v) {
+		std::cout << std::hex << std::setw(2) << std::setfill('0') << std::right << (int)b;
+	}
+	std::cout << std::endl;
 
 	std::cout << std::boolalpha << ret;
 

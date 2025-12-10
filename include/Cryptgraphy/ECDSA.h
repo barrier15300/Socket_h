@@ -26,7 +26,7 @@ struct secpTraits {
 	using baseint_t = iT;
 	using int_t = bigint<baseint_t::Words * 2 + 1>;
 	using modint_t = ModInt<int_t>;
-	using affin_t = ECAffinPoint<modint_t>;
+	using affin_t = ECAffin<modint_t>;
 	using projective_t = ECProject<modint_t>;
 };
 
@@ -295,51 +295,47 @@ public:
 
 	using bytearray = Cryptgraphy::bytearray;
 
-	static constexpr bytearray(*hasher)(const bytearray&) = &SHAKE256::Hasher256;
+	static constexpr bytearray(*hasher)(const bytearray&, size_t) = &SHAKE256::HasherN;
 	static inline RandomGenerator rd{};
 	static inline const Super::modint_t::Factory xmodn = Super::N.value;
 
-	static bytearray Sign(const Super::baseint_t& privateKey, const bytearray& message) {
-		auto&& e = xmodn(hasher(message));
-		auto&& k = Super::xmodp(rd.NextBytes(32));
-		while (k == (int)0) {
-			k = Super::xmodp(rd.NextBytes(32));
-		}
-		
+	static Super::affin_t MakePublicKey(const Super::baseint_t& privateKey) {
 		auto q = Super::projective_t(Super::G).Scaler(xmodn(privateKey)).ToAffin();
+		return q;
+	}
 
-		auto&& r = xmodn(Super::projective_t(Super::G).Scaler(k).ToAffin().x.value);
-		auto s = (xmodn(1) / k.value) * (e + r * xmodn(privateKey));
+	static bytearray Sign(const Super::baseint_t& privateKey, const bytearray& message) {
+		auto h = hasher(privateKey.ToBytes(), 64);
+		auto&& e = xmodn(hasher(message, 32));
+		auto&& sk = bytearray(h.begin() + 32, h.end());
+
+		sk.reserve(sk.size() + message.size());
+		sk.insert(sk.end(), message.begin(), message.end());
+
+		auto k = xmodn(hasher(sk, 32));
 		
-		auto _qx = Super::baseint_t(q.x.value).ToBytes();
-		auto _qy = Super::baseint_t(q.y.value).ToBytes();
+		auto&& r = xmodn(Super::projective_t(Super::G).Scaler(k).ToAffin().x.value);
+		auto s = (e + r * xmodn(privateKey)) / k.value;
+		
 		auto _r = Super::baseint_t(r.value).ToBytes();
 		auto _s = Super::baseint_t(s.value).ToBytes();
 		
 		bytearray ret;
-		ret.reserve(128);
-		ret.insert(ret.end(), _qx.begin(), _qx.end());
-		ret.insert(ret.end(), _qy.begin(), _qy.end());
+		ret.reserve(64);
 		ret.insert(ret.end(), _r.begin(), _r.end());
 		ret.insert(ret.end(), _s.begin(), _s.end());
 		
 		return ret;
 	}
 
-	static bool Verify(const bytearray& v, const bytearray& message) {
-		auto&& e = xmodn(hasher(message));
+	static bool Verify(const Super::affin_t& q, const bytearray& v, const bytearray& message) {
+		auto&& e = xmodn(hasher(message, 32));
 
-		auto&& q = Super::affin(
-			Super::xmodp(bytearray{v.begin(), v.begin() + 32}),
-			Super::xmodp(bytearray{v.begin() + 32, v.begin() + 64})
-		);
-		auto&& r = xmodn(bytearray{v.begin() + 64, v.begin() + 96});
-		auto&& s = xmodn(bytearray{v.begin() + 96, v.end()});
+		auto&& r = xmodn(bytearray{v.begin(), v.begin() + 32});
+		auto&& s = xmodn(bytearray{v.begin() + 32, v.end()});
 
-		auto invs = xmodn(1) / s;
-
-		auto u1 = Super::projective_t(Super::G).Scaler(Super::xmodp((e * invs).value));
-		auto u2 = Super::projective_t(q).Scaler(Super::xmodp((r * invs).value));
+		auto u1 = Super::projective_t(Super::G).Scaler(xmodn((e / s).value));
+		auto u2 = Super::projective_t(q).Scaler(xmodn((r / s).value));
 
 		auto&& ret = u1.Add(u2).ToAffin().x % Super::N;
 

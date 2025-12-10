@@ -28,8 +28,8 @@ public:
 };
 
 template<IntegralSet T>
-struct ECAffinPoint {
-	constexpr ECAffinPoint(const WeierstrassParameter<T>* p) : x{}, y{}, param(p) {}
+struct ECAffin {
+	constexpr ECAffin(const WeierstrassParameter<T>* p) : x{}, y{}, param(p) {}
 
 	class Factory {
 	public:
@@ -38,16 +38,16 @@ struct ECAffinPoint {
 		
 		constexpr Factory(WeierstrassParameter<T>&& p) { ptr = new WeierstrassParameter<T>(std::move(p)); }
 
-		constexpr ECAffinPoint operator()() const {
-			return ECAffinPoint(ptr);
+		constexpr ECAffin operator()() const {
+			return ECAffin(ptr);
 		}
 		template<class Tx, class Ty>
 			requires (
 				std::convertible_to<Tx, T> &&
 				std::convertible_to<Ty, T>
 			)
-		constexpr ECAffinPoint operator()(Tx&& x, Ty&& y) const {
-			ECAffinPoint point(ptr);
+		constexpr ECAffin operator()(Tx&& x, Ty&& y) const {
+			ECAffin point(ptr);
 			point.x = std::forward<Tx>(x);
 			point.y = std::forward<Ty>(y);
 			return point;
@@ -60,8 +60,8 @@ struct ECAffinPoint {
 				std::constructible_from<T, xArgs...> &&
 				std::constructible_from<T, yArgs...>
 			)
-		constexpr ECAffinPoint Make(std::tuple<xArgs&&...> xargs, std::tuple<yArgs&&...> yargs) const {
-			ECAffinPoint point(ptr);
+		constexpr ECAffin Make(std::tuple<xArgs&&...> xargs, std::tuple<yArgs&&...> yargs) const {
+			ECAffin point(ptr);
 			auto xctor = [&](xArgs... _xargs) -> T { return T(std::forward<xArgs>(_xargs)...); };
 			auto yctor = [&](yArgs... _yargs) -> T { return T(std::forward<yArgs>(_yargs)...); };
 			point.x = std::apply(xctor, xargs);
@@ -78,11 +78,11 @@ struct ECAffinPoint {
 		const WeierstrassParameter<T>* ptr;
 	};
 
-	constexpr ECAffinPoint(const ECAffinPoint&) = default;
-	constexpr ECAffinPoint(ECAffinPoint&&) = default;
+	constexpr ECAffin(const ECAffin&) = default;
+	constexpr ECAffin(ECAffin&&) = default;
 	
-	constexpr ECAffinPoint& operator=(const ECAffinPoint&) = default;
-	constexpr ECAffinPoint& operator=(ECAffinPoint&&) = default;
+	constexpr ECAffin& operator=(const ECAffin&) = default;
+	constexpr ECAffin& operator=(ECAffin&&) = default;
 	
 	T x;
 	T y;
@@ -91,14 +91,14 @@ struct ECAffinPoint {
 		return *param;
 	}
 
-	constexpr ECAffinPoint Double() const {
+	constexpr ECAffin Double() const {
 		Factory make(GetParam());
 		auto temp = (3 * (x * x) + GetParam().a) / (2 * y);
 		auto _x = (temp * temp) - (2 * x);
 		auto xtemp = x - _x;
 		return make(_x, (temp * xtemp) - y);
 	}
-	constexpr ECAffinPoint Add(const ECAffinPoint& other) const {
+	constexpr ECAffin Add(const ECAffin& other) const {
 		Factory make(GetParam());
 		if (*this == other) { return Double(); }
 		auto temp = (other.y - y) / (other.x - x);
@@ -106,12 +106,12 @@ struct ECAffinPoint {
 		auto xtemp = x - _x;
 		return make(_x, (temp * xtemp) - y);
 	}
-	constexpr ECAffinPoint Scaler(T s) const {
+	constexpr ECAffin Scaler(T s) const {
 		Factory make(GetParam());
 
 		bool first = true;
-		ECAffinPoint ret = make();
-		ECAffinPoint base = *this;
+		ECAffin ret = make();
+		ECAffin base = *this;
 
 		do {
 			if ((s & 1) == (int)1) {
@@ -129,10 +129,10 @@ struct ECAffinPoint {
 		return ret;
 	}
 
-	constexpr friend bool operator==(const ECAffinPoint& lhs, const ECAffinPoint& rhs) {
+	constexpr friend bool operator==(const ECAffin& lhs, const ECAffin& rhs) {
 		return lhs.x == rhs.x && lhs.y == rhs.y;
 	}
-	constexpr friend bool operator!=(const ECAffinPoint& lhs, const ECAffinPoint& rhs) {
+	constexpr friend bool operator!=(const ECAffin& lhs, const ECAffin& rhs) {
 		return !(lhs == rhs);
 	}
 
@@ -200,20 +200,20 @@ struct ECProject {
 	constexpr ECProject(const ECProject&) = default;
 	constexpr ECProject(ECProject&&) = default;
 
-	constexpr ECProject(const ECAffinPoint<T>& from) : x(from.x), y(from.y), param(&from.GetParam()) {
+	constexpr ECProject(const ECAffin<T>& from) : x(from.x), y(from.y), param(&from.GetParam()) {
 		z = 1;
 	}
-	constexpr ECProject(ECAffinPoint<T>&& from) : x(from.x), y(from.y), param(&from.GetParam()) {
+	constexpr ECProject(ECAffin<T>&& from) : x(from.x), y(from.y), param(&from.GetParam()) {
 		z = 1;
 	}
 
 	constexpr ECProject& operator=(const ECProject&) = default;
 	constexpr ECProject& operator=(ECProject&&) = default;
 
-	constexpr ECProject& operator=(const ECAffinPoint<T>& from) {
+	constexpr ECProject& operator=(const ECAffin<T>& from) {
 		return *this = ECProject(from);
 	}
-	constexpr ECProject& operator=(ECAffinPoint<T>&& from) {
+	constexpr ECProject& operator=(ECAffin<T>&& from) {
 		return *this = ECProject(std::move(from));
 	}
 
@@ -224,8 +224,8 @@ struct ECProject {
 	constexpr const WeierstrassParameter<T>& GetParam() const {
 		return *param;
 	}
-	constexpr ECAffinPoint<T> ToAffin() const {
-		typename ECAffinPoint<T>::Factory make(GetParam());
+	constexpr ECAffin<T> ToAffin() const {
+		typename ECAffin<T>::Factory make(GetParam());
 		return make(x / z, y / z);
 	}
 
