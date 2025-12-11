@@ -23,11 +23,11 @@ struct secp521r1 {};
 
 template<class iT>
 struct secpTraits {
-	using baseint_t = iT;
-	using int_t = bigint<baseint_t::Words * 2 + 1>;
-	using modint_t = ModInt<int_t>;
-	using affin_t = ECAffin<modint_t>;
-	using projective_t = ECProject<modint_t>;
+	using baseint_t		= iT;
+	using int_t			= bigint<baseint_t::Words * 2 + 1>;
+	using modint_t		= ModInt<int_t>;
+	using affin_t		= ECAffin<modint_t>;
+	using projective_t	= ECProject<modint_t>;
 };
 
 template<class secpType>
@@ -293,6 +293,12 @@ public:
 
 	using Super = _super;
 
+	using typename Super::baseint_t;
+	using typename Super::int_t;
+	using typename Super::modint_t;
+	using typename Super::affin_t;
+	using typename Super::projective_t;
+
 	using bytearray = Cryptgraphy::bytearray;
 
 	static constexpr bytearray(*hasher)(const bytearray&, size_t) = &SHAKE256::HasherN;
@@ -314,11 +320,11 @@ public:
 
 		auto k = xmodn(hasher(sk, 32));
 		
-		auto&& r = xmodn(Super::projective_t(Super::G).Scaler(k).ToAffin().x.value);
+		auto&& r = xmodn(typename Super::projective_t(Super::G).Scaler(k).ToAffin().x.value);
 		auto s = (e + r * xmodn(privateKey)) / k.value;
 		
-		auto _r = Super::baseint_t(r.value).ToBytes();
-		auto _s = Super::baseint_t(s.value).ToBytes();
+		auto _r = typename Super::baseint_t(r.value).ToBytes();
+		auto _s = typename Super::baseint_t(s.value).ToBytes();
 		
 		bytearray ret;
 		ret.reserve(64);
@@ -328,14 +334,14 @@ public:
 		return ret;
 	}
 
-	static bool Verify(const Super::affin_t& q, const bytearray& v, const bytearray& message) {
+	static bool Verify(const typename Super::affin_t& q, const bytearray& v, const bytearray& message) {
 		auto&& e = xmodn(hasher(message, 32));
 
 		auto&& r = xmodn(bytearray{v.begin(), v.begin() + 32});
 		auto&& s = xmodn(bytearray{v.begin() + 32, v.end()});
 
-		auto u1 = Super::projective_t(Super::G).Scaler(xmodn((e / s).value));
-		auto u2 = Super::projective_t(q).Scaler(xmodn((r / s).value));
+		auto u1 = typename Super::projective_t(Super::G).Scaler(xmodn((e / s).value));
+		auto u2 = typename Super::projective_t(q).Scaler(xmodn((r / s).value));
 
 		auto&& ret = u1.Add(u2).ToAffin().x % Super::N;
 
