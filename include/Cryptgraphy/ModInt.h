@@ -15,10 +15,10 @@ struct ModInt {
 
 		constexpr Factory(const T& p) : ptr(new T(p)) {}
 		
-		constexpr Factory(T&& p) { ptr = new T(std::move(p)); }
+		constexpr Factory(T&& p) : ptr(new T(std::move(p))) {}
 
 		template<class... Args>
-		constexpr Factory(Args&&... args) { ptr = new T(std::forward<Args>(args)...); }
+		constexpr Factory(Args&&... args) : ptr(new T(std::forward<Args>(args)...)) {}
 
 		constexpr ModInt operator()() const {
 			return ModInt(ptr);

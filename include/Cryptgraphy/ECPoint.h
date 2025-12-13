@@ -29,14 +29,17 @@ public:
 
 template<IntegralSet T>
 struct ECAffin {
-	constexpr ECAffin(const WeierstrassParameter<T>* p) : x{}, y{}, param(p) {}
+
+	using param_t = WeierstrassParameter<T>;
+
+	constexpr ECAffin(const param_t* p) : x{}, y{}, param(p) {}
 
 	class Factory {
 	public:
 
-		constexpr Factory(const WeierstrassParameter<T>& p) : ptr(&p) {}
+		constexpr Factory(const param_t& p) : ptr(new param_t(p)) {}
 		
-		constexpr Factory(WeierstrassParameter<T>&& p) { ptr = new WeierstrassParameter<T>(std::move(p)); }
+		constexpr Factory(param_t&& p) : ptr(new param_t(std::move(p))) {}
 
 		constexpr ECAffin operator()() const {
 			return ECAffin(ptr);
@@ -69,13 +72,13 @@ struct ECAffin {
 			return point;
 		}
 
-		constexpr const WeierstrassParameter<T>& Param() const {
+		constexpr const param_t& Param() const {
 			return *ptr;
 		}
 
 	private:
 
-		const WeierstrassParameter<T>* ptr;
+		const param_t* ptr;
 	};
 
 	constexpr ECAffin(const ECAffin&) = default;
@@ -87,7 +90,7 @@ struct ECAffin {
 	T x;
 	T y;
 
-	constexpr const WeierstrassParameter<T>& GetParam() const {
+	constexpr const param_t& GetParam() const {
 		return *param;
 	}
 
@@ -137,18 +140,21 @@ struct ECAffin {
 	}
 
 private:
-	const WeierstrassParameter<T>* param;
+	const param_t* param;
 };
 
 template<IntegralSet T>
 struct ECProject {
-	constexpr ECProject(const WeierstrassParameter<T>* p) : param(p) {}
+
+	using param_t = WeierstrassParameter<T>;
+
+	constexpr ECProject(const param_t* p) : param(p) {}
 
 	class Factory {
 	public:
-		constexpr Factory(const WeierstrassParameter<T>& p) : ptr(&p) {}
+		constexpr Factory(const param_t& p) : ptr(new param_t(p)) {}
 		
-		constexpr Factory(WeierstrassParameter<T>&& p) { ptr = new WeierstrassParameter<T>(std::move(p)); }
+		constexpr Factory(param_t&& p) : ptr(new param_t(std::move(p))) {}
 
 
 		constexpr ECProject operator()() const {
@@ -188,13 +194,13 @@ struct ECProject {
 			return point;
 		}
 
-		constexpr const WeierstrassParameter<T>& Param() const {
+		constexpr const param_t& Param() const {
 			return *ptr;
 		}
 
 	private:
 
-		const WeierstrassParameter<T>* ptr;
+		const param_t* ptr;
 	};
 
 	constexpr ECProject(const ECProject&) = default;
@@ -221,7 +227,7 @@ struct ECProject {
 	T y;
 	T z;
 
-	constexpr const WeierstrassParameter<T>& GetParam() const {
+	constexpr const param_t& GetParam() const {
 		return *param;
 	}
 	constexpr ECAffin<T> ToAffin() const {
@@ -330,5 +336,5 @@ struct ECProject {
 	}
 
 private:
-	const WeierstrassParameter<T>* param;
+	const param_t* param;
 };
