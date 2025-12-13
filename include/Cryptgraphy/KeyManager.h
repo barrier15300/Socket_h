@@ -77,7 +77,7 @@ public:
 		return Factory::MakeSharedKey(SecretKey, fromQKey);
 	}
 
-	typename const Factory::baseint_t& GetSecretKey() const {
+	const typename Factory::baseint_t& GetSecretKey() const {
 		return SecretKey;
 	}
 
