@@ -37,7 +37,7 @@ public:
 	using projective_t = types::projective_t;
 
 	static Cryptgraphy::bytearray GeneratePublicKey(const baseint_t& D) {
-		auto&& pubpoint = projective_t(Super::G).Scaler(Super::xmodp(D));
+		auto&& pubpoint = projective_t(Super::G).Scaler(Super::xmodp(D) % Super::N);
 		auto&& x = (baseint_t)pubpoint.ToAffin().x.value;
 		return x.ToBytes();
 	}
@@ -48,7 +48,7 @@ public:
 			Super::G.GetParam().GetY(Super::xmodp(fromQ)).Sqrt()
 		);
 
-		auto&& equalQ = projective_t(Q).Scaler(Super::xmodp(D));
+		auto&& equalQ = projective_t(Q).Scaler(Super::xmodp(D) % Super::N);
 		auto x = (baseint_t)equalQ.ToAffin().x.value;
 
 		return x.ToBytes();

@@ -3,9 +3,6 @@
 #include <chrono>
 #include <map>
 
-// #include "include/MultiWordInt.h"
-// #include "include/ModInt.h"
-
 #include "include/Socket.h"
 
 void Server();
@@ -66,33 +63,33 @@ struct ContainerInVariable {
 
 int main(int argc, char* argv[]) {
 	
-	//KeyManager Keya;
-	//KeyManager Keyb;
-	//
-	//auto tp = std::chrono::high_resolution_clock::now();
-	//
-	//auto kE = Keya.MakeQKey();
-	//auto kF = Keyb.MakeQKey();
-	//
-	//auto Ga = Keya.MakeSharedKey(kF);
-	//auto Gb = Keyb.MakeSharedKey(kE);
-	//
-	//auto ns = std::chrono::duration_cast<std::chrono::nanoseconds>(std::chrono::high_resolution_clock::now() - tp).count();
-	//
-	//bool same = Ga == Gb;
-	//
-	//std::cout << (double)ns / 1000 / 1000 / 1000 << "s" << std::endl;
-	//std::cout << std::boolalpha << "shared key same: " << same << std::endl;
-	//
-	//for (auto&& b : Ga) {
-	//	std::cout << std::hex << std::setw(2) << std::setfill('0') << std::right << (int)b;
-	//}
-	//std::cout << std::endl;
-	//
-	//for (auto&& b : Gb) {
-	//	std::cout << std::hex << std::setw(2) << std::setfill('0') << std::right << (int)b;
-	//}
-	//std::cout << std::endl;
+	KeyManager Keya;
+	KeyManager Keyb;
+	
+	auto tp = std::chrono::high_resolution_clock::now();
+	
+	auto kE = Keya.MakeQKey();
+	auto kF = Keyb.MakeQKey();
+	
+	auto Ga = Keya.MakeSharedKey(kF);
+	auto Gb = Keyb.MakeSharedKey(kE);
+	
+	auto ns = std::chrono::duration_cast<std::chrono::nanoseconds>(std::chrono::high_resolution_clock::now() - tp).count();
+	
+	bool same = Ga == Gb;
+	
+	std::cout << (double)ns / 1000 / 1000 / 1000 << "s" << std::endl;
+	std::cout << std::boolalpha << "shared key same: " << same << std::endl;
+	
+	for (auto&& b : Ga) {
+		std::cout << std::hex << std::setw(2) << std::setfill('0') << std::right << (int)b;
+	}
+	std::cout << std::endl;
+	
+	for (auto&& b : Gb) {
+		std::cout << std::hex << std::setw(2) << std::setfill('0') << std::right << (int)b;
+	}
+	std::cout << std::endl;
 
 	//KeyManager key;
 	//std::string message = "I have skill is write low level programing language.";
@@ -176,21 +173,21 @@ int main(int argc, char* argv[]) {
 
 	// arg[1]{ 0 = server, 1 = client }
 
-	std::vector<std::string> args;
-	args.insert(args.end(), argv, argv + argc);
-	
-	if (args.size() <= 1) {
-		return -1;
-	}
-	
-	if (std::stoi(args[1]) == 0) {
-		Server();
-	}
-	else {
-		Client();
-	}
-	
-	return 0;
+	//std::vector<std::string> args;
+	//args.insert(args.end(), argv, argv + argc);
+	//
+	//if (args.size() <= 1) {
+	//	return -1;
+	//}
+	//
+	//if (std::stoi(args[1]) == 0) {
+	//	Server();
+	//}
+	//else {
+	//	Client();
+	//}
+	//
+	//return 0;
 }
 
 void Server() {

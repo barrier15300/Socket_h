@@ -163,8 +163,18 @@
     <ClInclude Include="module\Socket.ixx" />
   </ItemGroup>
   <ItemGroup>
+    <None Include=".editorconfig" />
+    <None Include=".gitattributes" />
+    <None Include=".gitignore" />
+    <None Include="CMakePresets.json" />
     <None Include="docs\Overview.md" />
     <None Include="docs\template.md" />
+    <None Include="README.md" />
+    <None Include="Socket.slnx" />
+  </ItemGroup>
+  <ItemGroup>
+    <Text Include="CMakeLists.txt" />
+    <Text Include="LICENSE.txt" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
