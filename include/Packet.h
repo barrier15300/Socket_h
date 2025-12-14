@@ -60,6 +60,7 @@ struct Header {
 
 	uint32_t Size{};
 	uint32_t Type{};
+	uint32_t _reserved_field[2]{};
 
 	template<typename T>
 	static uint32_t type_id() {
