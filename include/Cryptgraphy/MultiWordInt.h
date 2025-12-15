@@ -549,7 +549,7 @@ struct bigint {
 		Cryptgraphy::bytearray ret;
 		ret.reserve(WordBytes);
 		for (size_t i = 0; i < WordBytes; ++i) {
-			ret.push_back(*(reinterpret_cast<const Cryptgraphy::byte_t*>(words().data()) + i));
+			ret.push_back(*(reinterpret_cast<const Cryptgraphy::byte_t*>(words().data()) + i));  // NOTE: not constexpr
 		}
 		return ret;
 	}

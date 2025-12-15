@@ -19,8 +19,8 @@ public:
 
 		constexpr state() {}
 		constexpr state(const bytearray& from) {
-			auto it = reinterpret_cast<byte_t*>(m_words.data());
-			auto end = reinterpret_cast<byte_t*>(m_words.data() + b);
+			auto it = reinterpret_cast<byte_t*>(m_words.data());       // NOTE: not constexpr
+			auto end = reinterpret_cast<byte_t*>(m_words.data() + b);  // NOTE: not constexpr
 			for (auto&& c : from) {
 				*it = c;
 				if (++it == end) {
@@ -90,7 +90,7 @@ public:
 			bytearray ret;
 			ret.reserve(sizeof(m_words));
 			for (size_t i = 0, c = sizeof(m_words); i < c; ++i) {
-				ret.push_back(*(reinterpret_cast<const byte_t*>(m_words.data()) + i));
+				ret.push_back(*(reinterpret_cast<const byte_t*>(m_words.data()) + i));  // NOTE: not constexpr
 			}
 			return ret;
 		}
