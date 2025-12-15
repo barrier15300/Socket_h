@@ -46,11 +46,11 @@ struct bigint {
 	constexpr bigint(sword_t from) noexcept requires(IsSigned) {
 		if (from < 0) {
 			from = -from;
-			words()[0] = (word_t)from;
+			words()[0] = static_cast<word_t>(from);
 			Negate();
 		}
 		else {
-			words()[0] = (word_t)from;
+			words()[0] = static_cast<word_t>(from);
 		}
 	}
 	constexpr bigint(std::initializer_list<word_t> list) { std::copy(std::rbegin(list), std::rend(list), words().begin()); }
@@ -68,7 +68,7 @@ struct bigint {
 		constexpr count_t totalbytes = WordBytes;
 		const count_t copycount = (arr.size() * sizeof(T) < totalbytes) ? arr.size() : totalbytes / sizeof(T);
 		std::fill(words().begin(), words().end(), 0);
-		auto it = (T*)words().data();
+		auto it = reinterpret_cast<T*>(words().data()); // TODO: resolve potential undefined behavior
 		auto end = it + copycount;
 		for (auto&& elem : arr) {
 			*it = elem;
@@ -211,10 +211,10 @@ struct bigint {
 		return words()[0];
 	}
 	constexpr operator signed_t&() requires(IsSigned) {
-		return *(signed_t*)(this);
+		return *this;  // TODO: remove unneccesary conversion
 	}
 	constexpr operator unsigned_t& () requires(!IsSigned) {
-		return *(unsigned_t*)(this);
+		return *this;  // TODO: remove unneccesary conversion
 	}
 
 	/// Arithmetic Module
@@ -249,7 +249,7 @@ struct bigint {
 	}
 	static constexpr std::pair<word_t, word_t> MulBase(word_t a, word_t b)  {
 		constexpr size_t halfbits = sizeof(halfword_t) * 8;
-		constexpr word_t halfmask = (((word_t)1 << halfbits) - 1);
+		constexpr word_t halfmask = ((static_cast<word_t>(1) << halfbits) - 1);
 
 		word_t al = a & halfmask;
 		word_t ah = (a >> halfbits) & halfmask;
@@ -549,7 +549,7 @@ struct bigint {
 		Cryptgraphy::bytearray ret;
 		ret.reserve(WordBytes);
 		for (size_t i = 0; i < WordBytes; ++i) {
-			ret.push_back(*((Cryptgraphy::byte_t*)words().data() + i));
+			ret.push_back(*(reinterpret_cast<const Cryptgraphy::byte_t*>(words().data()) + i));
 		}
 		return ret;
 	}
@@ -558,7 +558,7 @@ struct bigint {
 		
 		assert((base >= 2 && base <= 36) && "Invalid base");
 
-		word_t word_digits = (word_t)(WordBits / std::log2(base));
+		word_t word_digits = static_cast<word_t>(WordBits / std::log2(base));
 		bigint word_base = bigint(base).Pow(word_digits);
 
 		if constexpr (Words == 1) {
@@ -589,7 +589,7 @@ struct bigint {
 		}
 
 		do {
-			word_t mod = (word_t)rem.AssignDivMod(word_base).second;
+			word_t mod = static_cast<word_t>(rem.AssignDivMod(word_base).second);
 
 			std::string temp = WordToString(mod, base);
 
@@ -634,20 +634,10 @@ struct bigint {
 	constexpr arr_t& words() { return *m_words; }
 	constexpr const arr_t& words() const { return *m_words; }
 	constexpr bits_t& bits() {
-		union {
-			word_t* words{};
-			bits_t* bits;
-		};
-		words = m_words->data();
-		return *bits;
+		return *reinterpret_cast<bits_t*>(m_words->data());  // TODO: resolve potential undefined behavior
 	}
 	constexpr const bits_t& bits() const {
-		union {
-			const word_t* words{};
-			const bits_t* bits;
-		};
-		words = m_words->data();
-		return *bits;
+		return *reinterpret_cast<const bits_t*>(m_words->data());  // TODO: resolve potential undefined behavior
 	}
 
 private:

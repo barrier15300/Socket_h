@@ -19,8 +19,8 @@ public:
 
 		constexpr state() {}
 		constexpr state(const bytearray& from) {
-			auto it = (byte_t*)(m_words.data());
-			auto end = (byte_t*)(m_words.data() + b);
+			auto it = reinterpret_cast<byte_t*>(m_words.data());
+			auto end = reinterpret_cast<byte_t*>(m_words.data() + b);
 			for (auto&& c : from) {
 				*it = c;
 				if (++it == end) {
@@ -37,11 +37,11 @@ public:
 			constexpr reference(reference&&) noexcept = default;
 
 			constexpr reference& operator=(const reference& from) {
-				*this = (bool)from;
+				*this = static_cast<bool>(from);
 				return *this;
 			}
 			constexpr reference& operator=(reference&& from) noexcept {
-				*this = (bool)from;
+				*this = static_cast<bool>(from);
 				return *this;
 			}
 
@@ -58,7 +58,7 @@ public:
 				return *ptr & posword();
 			}
 			constexpr bool operator~() const {
-				return !(bool)(*this);
+				return !*this;
 			}
 			constexpr void flip() {
 				*this = ~(*this);
@@ -90,7 +90,7 @@ public:
 			bytearray ret;
 			ret.reserve(sizeof(m_words));
 			for (size_t i = 0, c = sizeof(m_words); i < c; ++i) {
-				ret.push_back(*((byte_t*)m_words.data() + i));
+				ret.push_back(*(reinterpret_cast<const byte_t*>(m_words.data()) + i));
 			}
 			return ret;
 		}
@@ -190,7 +190,7 @@ public:
 		word_t RC = 0;
 		
 		for (size_t j = 0; j <= l; ++j) {
-			size_t idx = (((size_t)1 << j) - 1);
+			size_t idx = ((static_cast<size_t>(1) << j) - 1);
 			if (rc(j + 7 * ir)) {
 				RC |= (word_t)1 << idx;
 			}

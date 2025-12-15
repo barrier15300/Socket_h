@@ -1,6 +1,8 @@
 #pragma once
 #include <concepts>
 
+#include <stddef.h>
+
 template<class T>
 concept RealNumberSet = requires(T a, T b) {
 	a += b;
@@ -27,12 +29,12 @@ concept RealNumberSet = requires(T a, T b) {
 };
 
 template<class T>
-concept IntegralSet = RealNumberSet<T> && requires(T a, T b) {
+concept IntegralSet = RealNumberSet<T> && requires(T a, T b, size_t n) {
 	a & b;
 	a | b;
 	a ^ b;
-	a << (size_t)1;
-	a >> (size_t)1;
-	a <<= (size_t)1;
-	a >>= (size_t)1;
+	a << n;
+	a >> n;
+	a <<= n;
+	a >>= n;
 };

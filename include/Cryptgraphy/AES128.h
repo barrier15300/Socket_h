@@ -14,7 +14,7 @@ static constexpr size_t _bit_width(uint64_t test) noexcept {
 
 class AES128 {
 
-#define _________ROR(v, s) (((v) >> (s)) | ((v) << (32 - s)))
+#define ROR(v, s) (((v) >> (s)) | ((v) << (32 - s)))
 	
 public:
 
@@ -239,7 +239,7 @@ public:
 		
 		void dbg_print() {
 			for (auto b : m_bytes) {
-				std::cout << std::uppercase << std::setfill('0') << std::setw(2) << std::hex << std::right << (int)b << " ";
+				std::cout << std::uppercase << std::setfill('0') << std::setw(2) << std::hex << std::right << static_cast<int>(b) << " ";
 			}
 			std::cout << std::endl;
 		}
@@ -354,7 +354,7 @@ public:
 	}
 
 	bool IsInit() const noexcept {
-		return (bool)m_resource;
+		return static_cast<bool>(m_resource);
 	}
 
 	block_t Encrypt(const block_t& src) const {
@@ -374,7 +374,7 @@ public:
 		return (rawlength & block_size_mask) == 0;
 	}
 	static size_t BlockLength(size_t rawlength) noexcept {
-		return (rawlength >> block_size_shift) + (bool)(rawlength & block_size_mask);
+		return (rawlength >> block_size_shift) + static_cast<bool>(rawlength & block_size_mask);
 	}
 	static bytearray SizeAlloc(size_t rawlength) {
 		bytearray ret;
@@ -746,13 +746,13 @@ private:
 		s ^= rk;
 	}
 	constexpr static void rotword(uint32_t& w)noexcept {
-		w = _________ROR(w, 8);
+		w = ROR(w, 8);
 	}
 	constexpr static void subword(uint32_t& w)noexcept {
-		w = ((uint32_t)SBox[(w >> 0) & 0xff] << 0) |
-			((uint32_t)SBox[(w >> 8) & 0xff] << 8) |
-			((uint32_t)SBox[(w >> 16) & 0xff] << 16) |
-			((uint32_t)SBox[(w >> 24) & 0xff] << 24);
+		w = (static_cast<uint32_t>(SBox[(w >> 0) & 0xff]) << 0) |
+			(static_cast<uint32_t>(SBox[(w >> 8) & 0xff]) << 8) |
+			(static_cast<uint32_t>(SBox[(w >> 16) & 0xff]) << 16) |
+			(static_cast<uint32_t>(SBox[(w >> 24) & 0xff]) << 24);
 	}
 	constexpr static roundkeys _KeyExpansion(const block_t& key) noexcept {
 		constexpr size_t startwords = block_size / sizeof(uint32_t);
@@ -811,5 +811,5 @@ private:
 		return state;
 	}
 
-#undef _________ROR
+#undef ROR
 };

@@ -147,12 +147,12 @@ struct IPAddressBase {
 		return ntohs(((&address)->*PortPtr()));
 	}
 	IPAddressBase& Version(int version) {
-		sockaddr* addr = (sockaddr*)&address;
+		sockaddr* addr = reinterpret_cast<sockaddr*>(&address);
 		addr->sa_family = version;
 		return *this;
 	}
 	int Version() {
-		sockaddr* addr = (sockaddr*)&address;
+		sockaddr* addr = reinterpret_cast<sockaddr*>(&address);
 		return static_cast<int>(addr->sa_family);
 	}
 
@@ -186,7 +186,7 @@ struct IPAddressBase {
 			return std::nullopt;
 		}
 		IPAddressBase ret;
-		ret.address = *(address_t*)res->ai_addr;
+		ret.address = *reinterpret_cast<address_t*>(res->ai_addr);
 		freeaddrinfo(res);
 		return ret;
 	}
@@ -428,7 +428,7 @@ public:
 	std::optional<typename sockbase::IPType> GetPeerAddress() {
 		typename sockbase::IPType ret;
 		socklen_t addrlen = sizeof(ret);
-		if (getpeername(sockbase::sock(), (sockaddr*)ret, &addrlen) != 0) {
+		if (getpeername(sockbase::sock(), static_cast<sockaddr*>(ret), &addrlen) != 0) {
 			return std::nullopt;
 		}
 		return ret;
@@ -492,7 +492,7 @@ public:
 	bool RawSend(const void* src, int size) {
 		int sended = 0;
 		while (sended < size) {
-			int ret = send(sockbase::sock(), (const char*)src + sended, size - sended, 0);
+			int ret = send(sockbase::sock(), static_cast<const char*>(src) + sended, size - sended, 0);
 			if (ret <= 0) { return false; }
 			sended += ret;
 		}
@@ -501,7 +501,7 @@ public:
 	bool RawRecv(void* dest, int size) {
 		int received = 0;
 		while (received < size) {
-			int ret = recv(sockbase::sock(), (char*)dest + received, size - received, 0);
+			int ret = recv(sockbase::sock(), static_cast<char*>(dest) + received, size - received, 0);
 			if (ret <= 0) { return false; }
 			received += ret;
 		}
@@ -673,7 +673,7 @@ public:
 
 	basic_TCPServer& operator=(const basic_TCPServer&) = delete;
 	basic_TCPServer& operator=(basic_TCPServer&& other) noexcept {
-		return *(basic_TCPServer*)sockbase::Copy(&other);
+		return *static_cast<basic_TCPServer*>(sockbase::Copy(&other));
 	}
 
 	bool Bind(typename sockbase::IPType addr) {

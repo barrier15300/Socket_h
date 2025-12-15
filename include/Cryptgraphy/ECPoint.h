@@ -93,7 +93,7 @@ struct ECAffin {
 	T y;
 
 	constexpr bool IsInf() const {
-		return x == (int)0 && y == (int)0;
+		return x == 0 && y == 0;
 	}
 
 	constexpr const param_t& GetParam() const {
@@ -134,11 +134,11 @@ struct ECAffin {
 		auto base = *this;
 
 		do {
-			if ((s & 1) == (int)1) {
+			if ((s & 1) == 1) {
 				ret = ret.Add(base);
 			}
 			base = base.Double();
-		} while ((s >>= 1) != (int)0);
+		} while ((s >>= 1) != 0);
 
 		return ret;
 	}
@@ -240,7 +240,7 @@ struct ECProjective {
 	T z;
 
 	constexpr bool IsInf() const {
-		return x == (int)0 && y == (int)0 && z == (int)0;
+		return x == 0 && y == 0 && z == 0;
 	}
 
 	constexpr const param_t& GetParam() const {
@@ -335,8 +335,8 @@ struct ECProjective {
 		//	t >>= 1;
 		//}
 
-		while (s != (int)0) {
-			if ((s & 1) == (int)1) {
+		while (s != 0) {
+			if ((s & 1) ==1) {
 				ret = ret.Add(base);
 			}
 			base = base.Double();

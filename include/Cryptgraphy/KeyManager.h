@@ -12,13 +12,13 @@ public:
 	static inline const modint_t X = xmodp("80000001F000000F80000001F0000001");
 	
 	static Cryptgraphy::bytearray GeneratePublicKey(const baseint_t& D) {
-		auto&& pub = (baseint_t)X.Pow(D).value;
+		auto&& pub = static_cast<baseint_t>(X.Pow(D).value);
 		return pub.ToBytes();
 	}
 
 	static Cryptgraphy::bytearray MakeSharedKey(const baseint_t& D, const Cryptgraphy::bytearray& fromQ) {
 		modint_t Q = xmodp(fromQ);
-		auto&& equalQ = (baseint_t)Q.Pow(D).value;
+		auto&& equalQ = static_cast<baseint_t>(Q.Pow(D).value);
 		return equalQ.ToBytes();
 	}
 };
@@ -38,7 +38,7 @@ public:
 
 	static Cryptgraphy::bytearray GeneratePublicKey(const baseint_t& D) {
 		auto&& pubpoint = projective_t(Super::G).Scaler(Super::xmodp(D) % Super::N);
-		auto&& x = (baseint_t)pubpoint.ToAffin().x.value;
+		auto&& x = static_cast<baseint_t>(pubpoint.ToAffin().x.value);
 		return x.ToBytes();
 	}
 
@@ -50,7 +50,7 @@ public:
 		);
 
 		auto&& equalQ = projective_t(Q).Scaler(Super::xmodp(D) % Super::N);
-		auto x = (baseint_t)equalQ.ToAffin().x.value;
+		auto x = static_cast<baseint_t>(equalQ.ToAffin().x.value);
 
 		return x.ToBytes();
 	}
