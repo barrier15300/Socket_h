@@ -237,18 +237,15 @@ public:
 /// Socket Base
 /// </summary>
 
-struct SocketTraits {
-	using bytearray = std::vector<uint8_t>;
-
-	template<class T>
-	using memcpyable = std::enable_if_t<std::is_trivially_copyable<T>::value, T>;
-
-};
-
 template<class ipT, Protocol _protocol>
 class SocketBase {
 public:
 	using IPType = ipT;
+
+	using bytearray = SocketDetail::bytearray;
+
+	template<class T>
+	static constexpr bool memcpyable = SocketDetail::memcpyable<T>;
 
 	// using poll_t;
 #ifdef _MSC_BUILD
@@ -381,10 +378,7 @@ protected:
 
 public:
 
-	using bytearray = typename SocketTraits::bytearray;
-
-	template<class T>
-	using stdlayout = typename SocketTraits::memcpyable<T>;
+	using bytearray = typename sockbase::bytearray;
 
 	basic_TCPSocket() : sockbase() {}
 	basic_TCPSocket(typename sockbase::IPType addr) : basic_TCPSocket() {
@@ -608,28 +602,6 @@ public:
 	std::future<std::optional<Packet>> ASyncEncryptionRecv() {
 		return std::async(std::launch::async, [&]() {
 			return this->EncryptionRecv();
-		});
-	}
-
-	template<class T>
-	bool _Send(const stdlayout<T>& target) {
-		return RawSend(&target, sizeof(T));
-	}
-	template<class T>
-	bool _Recv(stdlayout<T>& target) {
-		return RawRecv(&target, sizeof(T));
-	}
-
-	template<class T>
-	std::future<bool> _ASyncSend(const stdlayout<T>& target) {
-		return std::async(std::launch::async, [this, target]() {
-			return this->_Send<T>(target);
-		});
-	}
-	template<class T>
-	std::future<bool> _ASyncRecv(stdlayout<T>& target) {
-		return std::async(std::launch::async, [this, &target]() {
-			return this->_Recv<T>(target);
 		});
 	}
 
