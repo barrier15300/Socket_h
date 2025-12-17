@@ -18,9 +18,9 @@ public:
 	struct state {
 
 		constexpr state() {}
-		constexpr state(const bytearray& from) {
-			auto it = reinterpret_cast<byte_t*>(m_words.data());       // NOTE: not constexpr
-			auto end = reinterpret_cast<byte_t*>(m_words.data() + b);  // NOTE: not constexpr
+		constexpr state(byte_view from) {
+			auto it = std::bit_cast<byte_t*>(m_words.data());
+			auto end = std::bit_cast<byte_t*>(m_words.data() + b);
 			for (auto&& c : from) {
 				*it = c;
 				if (++it == end) {
@@ -28,6 +28,8 @@ public:
 				}
 			}
 		}
+		constexpr state(const bytearray& from) : state(byte_view(from)) {}
+		constexpr state(bytearray&& from) : state(byte_view(from)) {}
 
 		struct reference {
 			friend state;
@@ -58,7 +60,7 @@ public:
 				return *ptr & posword();
 			}
 			constexpr bool operator~() const {
-				return !*this;
+				return !(*this);
 			}
 			constexpr void flip() {
 				*this = ~(*this);
@@ -90,7 +92,7 @@ public:
 			bytearray ret;
 			ret.reserve(sizeof(m_words));
 			for (size_t i = 0, c = sizeof(m_words); i < c; ++i) {
-				ret.push_back(*(reinterpret_cast<const byte_t*>(m_words.data()) + i));  // NOTE: not constexpr
+				ret.push_back(*(std::bit_cast<const byte_t*>(m_words.data()) + i));
 			}
 			return ret;
 		}
@@ -192,10 +194,10 @@ public:
 		for (size_t j = 0; j <= l; ++j) {
 			size_t idx = ((static_cast<size_t>(1) << j) - 1);
 			if (rc(j + 7 * ir)) {
-				RC |= (word_t)1 << idx;
+				RC |= static_cast<word_t>(1) << idx;
 			}
 			else {
-				RC &= ~((word_t)1 << idx);
+				RC &= ~(static_cast<word_t>(1) << idx);
 			}
 		}
 
@@ -213,7 +215,7 @@ public:
 		for (size_t i = 12 + 2 * l - nr, c = 12 + 2 * l; i != c; ++i) {
 			A = Round(A, i);
 		}
-		return (bytearray)A;
+		return static_cast<bytearray>(A);
 	}
 	static constexpr bytearray SPONGE(const bytearray& N, size_t outlen) {
 		constexpr size_t r_8 = r / 8;
@@ -236,7 +238,7 @@ public:
 			byte_view t(P.begin() + (i * r_8), r_8);
 		
 			state pS = S;
-			state ps = {{t.begin(), t.end()}};
+			state ps = static_cast<state>(t);
 
 			for (size_t y = 0; y < 5; ++y) {
 				for (size_t x = 0; x < 5; ++x) {

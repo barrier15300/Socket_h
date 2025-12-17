@@ -68,7 +68,7 @@ struct bigint {
 		constexpr count_t totalbytes = WordBytes;
 		const count_t copycount = (arr.size() * sizeof(T) < totalbytes) ? arr.size() : totalbytes / sizeof(T);
 		std::fill(words().begin(), words().end(), 0);
-		auto it = reinterpret_cast<T*>(words().data()); // TODO: resolve potential undefined behavior
+		auto it = std::bit_cast<T*>(words().data()); // TODO: resolve potential undefined behavior
 		auto end = it + copycount;
 		for (auto&& elem : arr) {
 			*it = elem;
@@ -634,10 +634,12 @@ struct bigint {
 	constexpr arr_t& words() { return *m_words; }
 	constexpr const arr_t& words() const { return *m_words; }
 	constexpr bits_t& bits() {
-		return *reinterpret_cast<bits_t*>(m_words->data());  // TODO: resolve potential undefined behavior
+		return *std::bit_cast<bits_t*>(m_words->data());  // TODO: resolve potential undefined behavior
+		// NOTE: temporary fix
 	}
 	constexpr const bits_t& bits() const {
-		return *reinterpret_cast<const bits_t*>(m_words->data());  // TODO: resolve potential undefined behavior
+		return *std::bit_cast<const bits_t*>(m_words->data());  // TODO: resolve potential undefined behavior
+		// NOTE: temporary fix
 	}
 
 private:
