@@ -248,13 +248,22 @@ public:
 		constexpr block_t(word_t from) noexcept { m_words[0] = from; }
 		constexpr block_t(const cbytearray<block_size>& from) noexcept { m_bytes = from; }
 		constexpr block_t(cbytearray<block_size>&& from) noexcept { m_bytes = std::move(from); }
-		block_t(byte_view from) noexcept { std::memcpy(m_bytes.data(), from.data(), std::min(from.size(), block_size)); }
-		block_t(const bytearray& from) noexcept : block_t(byte_view(from)) {}
-		block_t(bytearray&& from) noexcept : block_t(byte_view(from)) {}
+		constexpr block_t(byte_view from) noexcept {
+			auto it = std::bit_cast<byte_t*>(m_bytes.data());
+			auto end = std::bit_cast<byte_t*>(m_bytes.data() + block_size);
+			for (auto&& c : from) {
+				*it = c;
+				if (++it == end) {
+					break;
+				}
+			}
+		}
+		constexpr block_t(const bytearray& from) noexcept : block_t(byte_view(from)) {}
+		constexpr block_t(bytearray&& from) noexcept : block_t(byte_view(from)) {}
 		constexpr block_t(const block_t&) noexcept = default;
 		constexpr block_t(block_t&&) noexcept = default;
 
-		block_t Reverse() const {
+		constexpr block_t Reverse() const {
 			block_t ret = *this;
 			std::reverse(ret.m_bytes.begin(), ret.m_bytes.end());
 			return ret;
@@ -733,10 +742,10 @@ private:
 			mixcolumn(b.m_byte4s[i], b.m_int4[i]);
 		}
 	}
-	constexpr static void invmixcolumn(const typename block_t::byte4_t& r, uint32_t& dest)noexcept {
+	constexpr static void invmixcolumn(const typename block_t::byte4_t& r, uint32_t& dest) noexcept {
 		dest = InvColumnTable[0][r[0]] ^ InvColumnTable[1][r[1]] ^ InvColumnTable[2][r[2]] ^ InvColumnTable[3][r[3]];
 	}
-	constexpr static void invmixcolumns(block_t& b)noexcept {
+	constexpr static void invmixcolumns(block_t& b) noexcept {
 		constexpr size_t loop = sizeof(block_t::byte4_t) / sizeof(byte_t);
 		for (size_t i = 0; i < loop; ++i) {
 			invmixcolumn(b.m_byte4s[i], b.m_int4[i]);
@@ -745,10 +754,10 @@ private:
 	constexpr static void addroundkey(block_t& s, const block_t& rk)noexcept {
 		s ^= rk;
 	}
-	constexpr static void rotword(uint32_t& w)noexcept {
+	constexpr static void rotword(uint32_t& w) noexcept {
 		w = ROR(w, 8);
 	}
-	constexpr static void subword(uint32_t& w)noexcept {
+	constexpr static void subword(uint32_t& w) noexcept {
 		w = (static_cast<uint32_t>(SBox[(w >> 0) & 0xff]) << 0) |
 			(static_cast<uint32_t>(SBox[(w >> 8) & 0xff]) << 8) |
 			(static_cast<uint32_t>(SBox[(w >> 16) & 0xff]) << 16) |

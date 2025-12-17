@@ -18,9 +18,9 @@ public:
 	struct state {
 
 		constexpr state() {}
-		constexpr state(const bytearray& from) {
-			auto it = reinterpret_cast<byte_t*>(m_words.data());       // NOTE: not constexpr
-			auto end = reinterpret_cast<byte_t*>(m_words.data() + b);  // NOTE: not constexpr
+		constexpr state(byte_view from) {
+			auto it = std::bit_cast<byte_t*>(m_words.data());
+			auto end = std::bit_cast<byte_t*>(m_words.data() + b);
 			for (auto&& c : from) {
 				*it = c;
 				if (++it == end) {
@@ -28,6 +28,8 @@ public:
 				}
 			}
 		}
+		constexpr state(const bytearray& from) : state(byte_view(from)) {}
+		constexpr state(bytearray&& from) : state(byte_view(from)) {}
 
 		struct reference {
 			friend state;
@@ -58,7 +60,7 @@ public:
 				return *ptr & posword();
 			}
 			constexpr bool operator~() const {
-				return !*this;
+				return !(*this);
 			}
 			constexpr void flip() {
 				*this = ~(*this);
@@ -90,7 +92,7 @@ public:
 			bytearray ret;
 			ret.reserve(sizeof(m_words));
 			for (size_t i = 0, c = sizeof(m_words); i < c; ++i) {
-				ret.push_back(*(reinterpret_cast<const byte_t*>(m_words.data()) + i));  // NOTE: not constexpr
+				ret.push_back(*(std::bit_cast<const byte_t*>(m_words.data()) + i));  // NOTE: but temporary fix
 			}
 			return ret;
 		}
