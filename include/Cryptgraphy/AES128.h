@@ -1,21 +1,7 @@
 ﻿#pragma once
 #include "common.h"
 
-static constexpr size_t _bit_width(uint64_t test) noexcept {
-	constexpr size_t bits = sizeof(size_t) * 8;
-	constexpr size_t testmask = size_t(1) << (bits - 1);
-	for (size_t i = 1; i < bits; ++i) {
-		if ((test << i) & testmask) {
-			return bits - i;
-		}
-	}
-	return bits;
-}
-
 class AES128 {
-
-#define ROR(v, s) (((v) >> (s)) | ((v) << (32 - s)))
-	
 public:
 
 	using byte_t = Cryptgraphy::byte_t;
@@ -29,7 +15,7 @@ public:
 	
 	static constexpr size_t block_size = 0x10;
 	static constexpr size_t block_size_mask = block_size - 1;
-	static constexpr size_t block_size_shift = _bit_width(block_size_mask);
+	static constexpr size_t block_size_shift = std::bit_width(block_size_mask);
 	static constexpr byte_t RCon[11] = {
 		0x8d,
 		0x01, 0x02, 0x04, 0x08, 0x10, 0x20, 0x40, 0x80, 0x1b, 0x36
@@ -685,85 +671,85 @@ public:
 	
 private:
 
-	constexpr static void subbytes(block_t& b) noexcept {
+	static constexpr void subbytes(block_t& b) noexcept {
 		for (size_t i = 0; i < block_size; ++i) {
 			b[i] = SBox[b[i]];
 		}
 	}
-	constexpr static void invsubbytes(block_t& b) noexcept {
+	static constexpr void invsubbytes(block_t& b) noexcept {
 		for (size_t i = 0; i < block_size; ++i) {
 			b[i] = InvSBox[b[i]];
 		}
 	}
-	constexpr static void shiftrows(block_t& b) noexcept {
+	static constexpr void shiftrows(block_t& b) noexcept {
 		block_t t = b;
 
 		b.m_byte4s[0][1] = t.m_byte4s[1][1];
 		b.m_byte4s[0][2] = t.m_byte4s[2][2];
 		b.m_byte4s[0][3] = t.m_byte4s[3][3];
-		
+
 		b.m_byte4s[1][1] = t.m_byte4s[2][1];
 		b.m_byte4s[1][2] = t.m_byte4s[3][2];
 		b.m_byte4s[1][3] = t.m_byte4s[0][3];
-		
+
 		b.m_byte4s[2][1] = t.m_byte4s[3][1];
 		b.m_byte4s[2][2] = t.m_byte4s[0][2];
 		b.m_byte4s[2][3] = t.m_byte4s[1][3];
-		
+
 		b.m_byte4s[3][1] = t.m_byte4s[0][1];
 		b.m_byte4s[3][2] = t.m_byte4s[1][2];
 		b.m_byte4s[3][3] = t.m_byte4s[2][3];
 	}
-	constexpr static void invshiftrows(block_t& b) noexcept {
+	static constexpr void invshiftrows(block_t& b) noexcept {
 		block_t t = b;
 
 		b.m_byte4s[0][1] = t.m_byte4s[3][1];
 		b.m_byte4s[0][2] = t.m_byte4s[2][2];
 		b.m_byte4s[0][3] = t.m_byte4s[1][3];
-		
+
 		b.m_byte4s[1][1] = t.m_byte4s[0][1];
 		b.m_byte4s[1][2] = t.m_byte4s[3][2];
 		b.m_byte4s[1][3] = t.m_byte4s[2][3];
-		
+
 		b.m_byte4s[2][1] = t.m_byte4s[1][1];
 		b.m_byte4s[2][2] = t.m_byte4s[0][2];
 		b.m_byte4s[2][3] = t.m_byte4s[3][3];
-		
+
 		b.m_byte4s[3][1] = t.m_byte4s[2][1];
 		b.m_byte4s[3][2] = t.m_byte4s[1][2];
 		b.m_byte4s[3][3] = t.m_byte4s[0][3];
 	}
-	constexpr static void mixcolumn(const typename block_t::byte4_t& r, uint32_t& dest) noexcept {
+	static constexpr void mixcolumn(const typename block_t::byte4_t& r, uint32_t& dest) noexcept {
 		dest = ColumnTable[0][r[0]] ^ ColumnTable[1][r[1]] ^ ColumnTable[2][r[2]] ^ ColumnTable[3][r[3]];
 	}
-	constexpr static void mixcolumns(block_t& b) noexcept {
+	static constexpr void mixcolumns(block_t& b) noexcept {
 		constexpr size_t loop = sizeof(block_t::byte4_t) / sizeof(byte_t);
 		for (size_t i = 0; i < loop; ++i) {
 			mixcolumn(b.m_byte4s[i], b.m_int4[i]);
 		}
 	}
-	constexpr static void invmixcolumn(const typename block_t::byte4_t& r, uint32_t& dest) noexcept {
+	static constexpr void invmixcolumn(const typename block_t::byte4_t& r, uint32_t& dest) noexcept {
 		dest = InvColumnTable[0][r[0]] ^ InvColumnTable[1][r[1]] ^ InvColumnTable[2][r[2]] ^ InvColumnTable[3][r[3]];
 	}
-	constexpr static void invmixcolumns(block_t& b) noexcept {
+	static constexpr void invmixcolumns(block_t& b) noexcept {
 		constexpr size_t loop = sizeof(block_t::byte4_t) / sizeof(byte_t);
 		for (size_t i = 0; i < loop; ++i) {
 			invmixcolumn(b.m_byte4s[i], b.m_int4[i]);
 		}
 	}
-	constexpr static void addroundkey(block_t& s, const block_t& rk)noexcept {
+	static constexpr void addroundkey(block_t& s, const block_t& rk)noexcept {
 		s ^= rk;
 	}
-	constexpr static void rotword(uint32_t& w) noexcept {
-		w = ROR(w, 8);
+	static constexpr void rotword(uint32_t& w) noexcept {
+		w = std::rotr(w, 8);
 	}
-	constexpr static void subword(uint32_t& w) noexcept {
+	static constexpr void subword(uint32_t& w) noexcept {
 		w = (static_cast<uint32_t>(SBox[(w >> 0) & 0xff]) << 0) |
 			(static_cast<uint32_t>(SBox[(w >> 8) & 0xff]) << 8) |
 			(static_cast<uint32_t>(SBox[(w >> 16) & 0xff]) << 16) |
 			(static_cast<uint32_t>(SBox[(w >> 24) & 0xff]) << 24);
 	}
-	constexpr static roundkeys _KeyExpansion(const block_t& key) noexcept {
+	static constexpr roundkeys _KeyExpansion(const block_t& key) noexcept {
 		constexpr size_t startwords = block_size / sizeof(uint32_t);
 		roundkeys rk{};
 		rk[0] = key;
@@ -774,7 +760,7 @@ private:
 
 		while (wordgenerated < itercount) {
 			constexpr size_t mask = (sizeof(uint32_t) - 1);
-			constexpr size_t shift = _bit_width(sizeof(uint32_t) - 1);
+			constexpr size_t shift = std::bit_width(sizeof(uint32_t) - 1);
 			size_t shifted = wordgenerated >> shift;
 			uint32_t temp = rk[(wordgenerated - 1) >> shift].m_int4[(wordgenerated - 1) & mask];
 
@@ -791,7 +777,7 @@ private:
 
 		return rk;
 	}
-	constexpr static block_t _Encrypt(const block_t& src, const roundkeys& key) noexcept {
+	static constexpr block_t _Encrypt(const block_t& src, const roundkeys& key) noexcept {
 		block_t state = src;
 		addroundkey(state, key[0]);
 		for (size_t i = 1; i < Nr; ++i) {
@@ -805,7 +791,7 @@ private:
 		addroundkey(state, key[Nr]);
 		return state;
 	}
-	constexpr static block_t _Decrypt(const block_t& src, const roundkeys& key) noexcept {
+	static constexpr block_t _Decrypt(const block_t& src, const roundkeys& key) noexcept {
 		block_t state = src;
 		addroundkey(state, key[Nr]);
 		for (size_t i = Nr - 1; 1 <= i; i--) {
@@ -819,6 +805,4 @@ private:
 		addroundkey(state, key[0]);
 		return state;
 	}
-
-#undef ROR
 };
