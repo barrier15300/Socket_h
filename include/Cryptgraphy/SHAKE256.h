@@ -92,7 +92,7 @@ public:
 			bytearray ret;
 			ret.reserve(sizeof(m_words));
 			for (size_t i = 0, c = sizeof(m_words); i < c; ++i) {
-				ret.push_back(*(std::bit_cast<const byte_t*>(m_words.data()) + i));  // NOTE: but temporary fix
+				ret.push_back(*(std::bit_cast<const byte_t*>(m_words.data()) + i));
 			}
 			return ret;
 		}
@@ -194,10 +194,10 @@ public:
 		for (size_t j = 0; j <= l; ++j) {
 			size_t idx = ((static_cast<size_t>(1) << j) - 1);
 			if (rc(j + 7 * ir)) {
-				RC |= (word_t)1 << idx;
+				RC |= static_cast<word_t>(1) << idx;
 			}
 			else {
-				RC &= ~((word_t)1 << idx);
+				RC &= ~(static_cast<word_t>(1) << idx);
 			}
 		}
 
@@ -215,7 +215,7 @@ public:
 		for (size_t i = 12 + 2 * l - nr, c = 12 + 2 * l; i != c; ++i) {
 			A = Round(A, i);
 		}
-		return (bytearray)A;
+		return static_cast<bytearray>(A);
 	}
 	static constexpr bytearray SPONGE(const bytearray& N, size_t outlen) {
 		constexpr size_t r_8 = r / 8;
