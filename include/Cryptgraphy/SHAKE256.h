@@ -238,7 +238,7 @@ public:
 			byte_view t(P.begin() + (i * r_8), r_8);
 		
 			state pS = S;
-			state ps = {{t.begin(), t.end()}};
+			state ps = static_cast<state>(t);
 
 			for (size_t y = 0; y < 5; ++y) {
 				for (size_t x = 0; x < 5; ++x) {
