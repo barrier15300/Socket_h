@@ -274,41 +274,89 @@ struct bigint {
 
 		return { t1, t2 };
 	}
-	constexpr bigint& AssignMul(bigint src) {
-		
-		bigint base = *this;
-		*this = 0;
+	static constexpr bigint NormalMul(const bigint& x, const bigint& y) {
+		bigint ret = 0;
+
 		for (count_t j = 0; j < Words; ++j) {
-			const word_t src_word = src.words()[j];
-			
-			if (src_word == 0) {
+			const word_t y_word = y.words()[j];
+
+			if (y_word == 0) {
 				continue;
 			}
-			
+
 			word_t carry = 0;
 			bool carryflag = false;
-			
+
 			for (count_t i = 0; i + j < Words; ++i) {
 				word_t temp = carry;
-			
+
 				const auto [lower, upper] = MulBase(
-					src_word,
-					base.words()[i]
+					y_word,
+					x.words()[i]
 				);
-				
+
 				carryflag = AddBase(&temp, lower, carryflag);
-				
+
 				carry = upper + carryflag;
-				
+
 				carryflag = AddBase(
-					std::addressof(this->words()[i + j]),
+					std::addressof(ret.words()[i + j]),
 					temp,
 					false
 				);
 			}
 		}
+
+		return ret;
+	}
+	static constexpr bigint Karatuba(const bigint& x, const bigint& y) {
+		bigint ret = 0;
 		
-		return *this;
+		if (x == 0 || y == 0) {
+			return ret;
+		}
+
+		count_t nbit = std::max(x.GetNBit(), y.GetNBit());
+		count_t halfbits = (nbit + (nbit & 1)) / 2;
+		
+		if (halfbits <= WordBits * 2) {
+			ret = NormalMul(x, y);
+			return ret;
+		}
+		
+		bigint halfmask = (bigint(1) << halfbits) - 1;
+
+		bigint xl = x; 
+		bigint xh = x; 
+		bigint yl = y; 
+		bigint yh = y; 
+
+		xl &= halfmask;
+		xh >>= halfbits;
+		yl &= halfmask;
+		yh >>= halfbits;
+		
+		bigint z0 = Karatuba(xl, yl);
+		bigint z2 = Karatuba(xh, yh);
+		
+		xl += xh;
+		yl += yh;
+		bigint z1 = Karatuba(xl, yl);
+
+		z1 -= z0;
+		z1 -= z2;
+		ret += z0;
+		
+		z1 <<= halfbits;
+		z2 <<= (2 * halfbits);
+
+		ret += z1;
+		ret += z2;
+		
+		return ret;
+	}
+	constexpr bigint& AssignMul(bigint src) {
+		return *this = NormalMul(*this, src);
 	}
 	constexpr std::pair<bigint&, bigint> AssignDivMod(bigint src) {
 		
@@ -356,11 +404,11 @@ struct bigint {
 	constexpr friend bool operator<=(const bigint& lhs, const bigint& rhs) { return lhs.Compare(rhs) <= 0; }
 	constexpr friend bool operator> (const bigint& lhs, const bigint& rhs) { return lhs.Compare(rhs) >  0; }
 	constexpr friend bool operator>=(const bigint& lhs, const bigint& rhs) { return lhs.Compare(rhs) >= 0; }
-	constexpr bigint& AssignLeftShift(word_t c) {
+	constexpr bigint& AssignLeftShift(count_t c) {
 		bits() <<= c;
 		return *this;
 	}
-	constexpr bigint& AssignRightShift(word_t c) {
+	constexpr bigint& AssignRightShift(count_t c) {
 		if constexpr (IsSigned) {
 			if (this->IsNegative()) {
 				unsigned_t shiftmask = 1;
@@ -379,10 +427,10 @@ struct bigint {
 		}
 		return *this;
 	}
-	constexpr bigint& operator<<=(word_t c) { return AssignLeftShift(c); }
-	constexpr bigint& operator>>=(word_t c) { return AssignRightShift(c); }
-	constexpr friend bigint operator<<(bigint lhs, word_t c) { return lhs.AssignLeftShift(c); }
-	constexpr friend bigint operator>>(bigint lhs, word_t c) { return lhs.AssignRightShift(c); }
+	constexpr bigint& operator<<=(count_t c) { return AssignLeftShift(c); }
+	constexpr bigint& operator>>=(count_t c) { return AssignRightShift(c); }
+	constexpr friend bigint operator<<(bigint lhs, count_t c) { return lhs.AssignLeftShift(c); }
+	constexpr friend bigint operator>>(bigint lhs, count_t c) { return lhs.AssignRightShift(c); }
 	constexpr bigint& AssignNot() { bits().flip(); return *this; }
 	constexpr bigint operator~() const { return bigint(*this).AssignNot(); }
 	constexpr bigint& AssignAnd(const bigint& src) { bits() &= src.bits(); return *this; }
