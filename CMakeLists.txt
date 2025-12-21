@@ -14,23 +14,10 @@ project ("Socket")
 # ソースをこのプロジェクトの実行可能ファイルに追加します。
 add_executable (Socket
 	"Socket.cpp"
+)
 
-	# include
-	"include/common.h"
-	"include/Packet.h"
-	"include/Socket.h"
-
-	# include/Cryptgraphy
-	"include/Cryptgraphy/AES128.h"
-	"include/Cryptgraphy/common.h"
-	"include/Cryptgraphy/ECDSA.h"
-	"include/Cryptgraphy/ECPoint.h"
-	"include/Cryptgraphy/KeyManager.h"
-	"include/Cryptgraphy/ModInt.h"
-	"include/Cryptgraphy/MultiWordInt.h"
-	"include/Cryptgraphy/NumberSet.h"
-	"include/Cryptgraphy/RandomGenerator.h"
-	"include/Cryptgraphy/SHAKE256.h"
+include_directories(
+	${PROJECT_SOURCE_DIR}/include
 )
 
 if (CMAKE_VERSION VERSION_GREATER 3.12)
