@@ -186,7 +186,7 @@ struct Packet {
 		*this = Packet(id, b.data(), b.size());
 	}
 	template<class enumT, class T>
-	Packet(enumT type, const std::vector<T>& data) requires (is_enum32<T>&& cross_convertible<T>) : Packet(static_cast<uint32_t>(type), data) {}
+	Packet(enumT type, const std::vector<T>& data) requires (is_enum32<enumT>&& cross_convertible<T>) : Packet(static_cast<uint32_t>(type), data) {}
 	template<class T>
 	explicit Packet(const std::vector<T>& data) requires (cross_convertible<T>) : Packet(Header::type_hash_code<std::vector<T>>(), data) {}
 
