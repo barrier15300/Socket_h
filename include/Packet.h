@@ -100,6 +100,7 @@ struct Packet {
 
 	using byte_t = SocketDetail::byte_t;
 	using bytearray = SocketDetail::bytearray;
+	using header_bytes = SocketDetail::cbytearray<HeaderSize>;
 
 	using byte_view = SocketDetail::byte_view;
 	using byte_ref = SocketDetail::byte_ref;
@@ -146,33 +147,33 @@ struct Packet {
 	template<class enumT, size_t len>
 	Packet(enumT type, const char(&data)[len]) requires (is_enum32<enumT>) : Packet(static_cast<uint32_t>(type), std::addressof(data), len - 1) {}
 	template<size_t len>
-	Packet(const char(&data)[len]) : Packet(Header::type_hash_code<std::string>(), std::addressof(data), len - 1) {}
+	explicit Packet(const char(&data)[len]) : Packet(Header::type_hash_code<std::string>(), std::addressof(data), len - 1) {}
 
 	Packet(uint32_t id, const std::string& data) : Packet(id, data.data(), data.size()) {}
 	template<class enumT>
 	Packet(enumT type, const std::string& data) requires (is_enum32<enumT>) : Packet(type, data.data(), data.size()) {}
-	Packet(const std::string& data) : Packet(Header::type_hash_code<std::string>(), data.data(), data.size()) {}
+	explicit Packet(const std::string& data) : Packet(Header::type_hash_code<std::string>(), data.data(), data.size()) {}
 
 	template<class T>
 	Packet(uint32_t id, const T& data) requires (memcpyable<T> && !cross_convertible<T>) : Packet(id, std::addressof(data), sizeof(T)) {}
 	template<class enumT, class T>
 	Packet(enumT type, const T& data) requires (is_enum32<enumT>&& memcpyable<T> && !cross_convertible<T>) : Packet(static_cast<uint32_t>(type), std::addressof(data), sizeof(T)) {}
 	template<class T>
-	Packet(const T& data) requires (memcpyable<T> && !cross_convertible<T>) : Packet(Header::type_hash_code<T>(), std::addressof(data), sizeof(T)) {}
+	explicit Packet(const T& data) requires (memcpyable<T> && !cross_convertible<T>) : Packet(Header::type_hash_code<T>(), std::addressof(data), sizeof(T)) {}
 
 	template<class T>
 	Packet(uint32_t id, const std::vector<T>& data) requires (memcpyable<T> && !cross_convertible<T>) : Packet(id, data.data(), data.size() * sizeof(T)) {}
 	template<class enumT, class T>
 	Packet(enumT type, const std::vector<T>& data) requires (is_enum32<enumT>&& memcpyable<T> && !cross_convertible<T>) : Packet(static_cast<uint32_t>(type), data.data(), data.size() * sizeof(T)) {}
 	template<class T>
-	Packet(const std::vector<T>& data) requires (memcpyable<T> && !cross_convertible<T>) : Packet(Header::type_hash_code<std::vector<T>>(), data.data(), data.size() * sizeof(T)) {}
+	explicit Packet(const std::vector<T>& data) requires (memcpyable<T> && !cross_convertible<T>) : Packet(Header::type_hash_code<std::vector<T>>(), data.data(), data.size() * sizeof(T)) {}
 
 	template<class T>
 	Packet(uint32_t id, const T& data) requires (cross_convertible<T>) : Packet(id, Convert<T>(data));
 	template<class enumT, class T>
 	Packet(enumT type, const T& data) requires (is_enum32<enumT>&& cross_convertible<T>) : Packet(static_cast<uint32_t>(type), data) {}
 	template<class T>
-	Packet(const T& data) requires (cross_convertible<T>) : Packet(Header::type_hash_code<T>(), data) {}
+	explicit Packet(const T& data) requires (cross_convertible<T>) : Packet(Header::type_hash_code<T>(), data) {}
 
 	template<class T>
 	Packet(uint32_t id, const std::vector<T>& data) requires (cross_convertible<T>) {
@@ -187,7 +188,7 @@ struct Packet {
 	template<class enumT, class T>
 	Packet(enumT type, const std::vector<T>& data) requires (is_enum32<T>&& cross_convertible<T>) : Packet(static_cast<uint32_t>(type), data) {}
 	template<class T>
-	Packet(const std::vector<T>& data) requires (cross_convertible<T>) : Packet(Header::type_hash_code<std::vector<T>>(), data) {}
+	explicit Packet(const std::vector<T>& data) requires (cross_convertible<T>) : Packet(Header::type_hash_code<std::vector<T>>(), data) {}
 
 	Packet(uint32_t id, std::ifstream& ifs) {
 

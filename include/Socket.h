@@ -232,19 +232,6 @@ public:
 
 #endif
 
-
-/// <summary>
-/// Socket Base
-/// </summary>
-
-struct SocketTraits {
-	using bytearray = std::vector<uint8_t>;
-
-	template<class T>
-	using memcpyable = std::enable_if_t<std::is_trivially_copyable<T>::value, T>;
-
-};
-
 template<class ipT, Protocol _protocol>
 class SocketBase {
 public:
@@ -381,10 +368,10 @@ protected:
 
 public:
 
-	using bytearray = typename SocketTraits::bytearray;
+	using bytearray = SocketDetail::bytearray;
 
 	template<class T>
-	using stdlayout = typename SocketTraits::memcpyable<T>;
+	static constexpr bool memcpyable = SocketDetail::memcpyable<T>;
 
 	basic_TCPSocket() : sockbase() {}
 	basic_TCPSocket(typename sockbase::IPType addr) : basic_TCPSocket() {
@@ -508,10 +495,10 @@ public:
 		return true;
 	}
 
-	bool Send(const bytearray& src) {
+	bool Send(SocketDetail::byte_view src) {
 		return RawSend(src.data(), static_cast<int>(src.size()));
 	}
-	bool Recv(bytearray& dest) {
+	bool Recv(SocketDetail::byte_ref dest) {
 		if (dest.empty()) { return false; }
 		return RawRecv(dest.data(), static_cast<int>(dest.size()));
 	}
@@ -523,24 +510,23 @@ public:
 		return Send(src.GetRawPacket());
 	}
 	std::optional<Packet> Recv() {
-		bytearray head(Packet::HeaderSize);
-		if (!Recv(head)) {
+		Packet::header_bytes headbuf{};
+		if (!Recv(headbuf)) {
 			return std::nullopt;
 		}
-		Packet pak;
-		pak.SetBuffer(std::move(head));
-		bytearray data(pak.GetHeader()->Size);
+		Header head = std::bit_cast<Header>(headbuf);
+		bytearray data(head.Size);
 		if (!Recv(data)) {
 			return std::nullopt;
 		}
-		return Packet(pak.GetHeader()->Type, data);
+		return Packet(head.Type, data);
 	}
 
-	bool EncryptionSend(const bytearray& src) {
-		bytearray target;
+	bool EncryptionSend(SocketDetail::byte_view src) {
+		bytearray target(src.size());
 		return Encrypt(src, target) && Send(target);
 	}
-	bool EncryptionRecv(bytearray& dest) {
+	bool EncryptionRecv(SocketDetail::byte_ref dest) {
 		return Recv(dest) && Decrypt(dest, dest);
 	}
 
@@ -548,23 +534,19 @@ public:
 		if (src.CheckHeader()) {
 			return false;
 		}
-		bytearray data(src.GetRawPacket().begin() + Packet::HeaderSize, src.GetRawPacket().end());
-		bool flag = Encrypt(data, data);
-		Packet pak = Packet(src.GetHeader()->Type, data);
-		return flag && Send(pak);
+		return EncryptionSend(*src.GetRawData());
 	}
 	std::optional<Packet> EncryptionRecv() {
-		bytearray head(Packet::HeaderSize);
-		if (!Recv(head)) {
+		Packet::header_bytes headbuf{};
+		if (!Recv(headbuf)) {
 			return std::nullopt;
 		}
-		Packet pak;
-		pak.SetBuffer(std::move(head));
-		bytearray data(pak.GetHeader()->Size);
+		Header head = std::bit_cast<Header>(headbuf);
+		bytearray data(head.Size);
 		if (!EncryptionRecv(data)) {
 			return std::nullopt;
 		}
-		return Packet(pak.GetHeader()->Type, data);
+		return Packet(head.Type, data);
 	}
 
 	std::future<bool> ASyncSend(const bytearray& src) {
@@ -612,22 +594,22 @@ public:
 	}
 
 	template<class T>
-	bool _Send(const stdlayout<T>& target) {
+	bool _Send(const T& target) requires (memcpyable<T>) {
 		return RawSend(&target, sizeof(T));
 	}
 	template<class T>
-	bool _Recv(stdlayout<T>& target) {
+	bool _Recv(T& target) requires (memcpyable<T>) {
 		return RawRecv(&target, sizeof(T));
 	}
 
 	template<class T>
-	std::future<bool> _ASyncSend(const stdlayout<T>& target) {
+	std::future<bool> _ASyncSend(const T& target) requires (memcpyable<T>) {
 		return std::async(std::launch::async, [this, target]() {
 			return this->_Send<T>(target);
 		});
 	}
 	template<class T>
-	std::future<bool> _ASyncRecv(stdlayout<T>& target) {
+	std::future<bool> _ASyncRecv(T& target) requires (memcpyable<T>) {
 		return std::async(std::launch::async, [this, &target]() {
 			return this->_Recv<T>(target);
 		});

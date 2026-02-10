@@ -23,6 +23,8 @@ namespace SocketDetail {
 	using byte_ref = std::span<byte_t>;
 
 	using bytearray = std::vector<byte_t>;
+	template<size_t S>
+	using cbytearray = std::array<byte_t, S>;
 
 	template<class T>
 	concept enum32 = std::is_enum_v<T> && (sizeof(T) == sizeof(uint32_t));
@@ -42,7 +44,4 @@ namespace SocketDetail {
 
 	template<class T>
 	concept cross_convertible = to_byteable<T> && from_byteable<T>;
-
-
-
 }
