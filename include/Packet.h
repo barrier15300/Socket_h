@@ -279,7 +279,7 @@ struct Packet {
 			return std::nullopt;
 		}
 		std::vector<T> ret;
-		byte_view view = byte_view(m_buffer.begin(), HeaderSize);
+		byte_view view = byte_view(m_buffer).subspan(HeaderSize);
 		while (view.begin() < view.end()) {
 			auto&& [elem, last] = Convert<T>(view);
 			ret.push_back(std::move(elem));
