@@ -234,18 +234,11 @@ public:
 		constexpr block_t(word_t from) noexcept { m_words[0] = from; }
 		constexpr block_t(const cbytearray<block_size>& from) noexcept { m_bytes = from; }
 		constexpr block_t(cbytearray<block_size>&& from) noexcept { m_bytes = std::move(from); }
-		constexpr block_t(byte_view from) noexcept {
-			auto it = std::bit_cast<byte_t*>(m_bytes.data());
-			auto end = std::bit_cast<byte_t*>(m_bytes.data() + block_size);
-			for (auto&& c : from) {
-				*it = c;
-				if (++it == end) {
-					break;
-				}
-			}
+		constexpr block_t(byte_view from) {
+			m_bytes = constexpr_bytes_cast<decltype(m_bytes)>(from);
 		}
-		constexpr block_t(const bytearray& from) noexcept : block_t(byte_view(from)) {}
-		constexpr block_t(bytearray&& from) noexcept : block_t(byte_view(from)) {}
+		constexpr block_t(const bytearray& from) : block_t(byte_view(from)) {}
+		constexpr block_t(bytearray&& from) : block_t(byte_view(from)) {}
 		constexpr block_t(const block_t&) noexcept = default;
 		constexpr block_t(block_t&&) noexcept = default;
 

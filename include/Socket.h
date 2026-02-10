@@ -232,10 +232,20 @@ public:
 
 #endif
 
+
+/// <summary>
+/// Socket Base
+/// </summary>
+
 template<class ipT, Protocol _protocol>
 class SocketBase {
 public:
 	using IPType = ipT;
+
+	using bytearray = SocketDetail::bytearray;
+
+	template<class T>
+	static constexpr bool memcpyable = SocketDetail::memcpyable<T>;
 
 	// using poll_t;
 #ifdef _MSC_BUILD
