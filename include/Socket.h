@@ -21,7 +21,7 @@
 #include "common.h"
 
 #ifdef SOCKET_H_USE_NAMESPACE
-namespace NetIO {
+namespace Socket {
 #endif // SOCKET_H_USE_NAMESPACE
 
 #include "Cryptgraphy/AES128.h"
@@ -369,6 +369,8 @@ protected:
 public:
 
 	using bytearray = SocketDetail::bytearray;
+	using byte_view = SocketDetail::byte_view;
+	using byte_ref = SocketDetail::byte_ref;
 
 	template<class T>
 	static constexpr bool memcpyable = SocketDetail::memcpyable<T>;
@@ -495,10 +497,10 @@ public:
 		return true;
 	}
 
-	bool Send(SocketDetail::byte_view src) {
+	bool Send(byte_view src) {
 		return RawSend(src.data(), static_cast<int>(src.size()));
 	}
-	bool Recv(SocketDetail::byte_ref dest) {
+	bool Recv(byte_ref dest) {
 		if (dest.empty()) { return false; }
 		return RawRecv(dest.data(), static_cast<int>(dest.size()));
 	}
@@ -522,11 +524,11 @@ public:
 		return Packet(head.Type, data);
 	}
 
-	bool EncryptionSend(SocketDetail::byte_view src) {
+	bool EncryptionSend(byte_view src) {
 		bytearray target(src.size());
 		return Encrypt(src, target) && Send(target);
 	}
-	bool EncryptionRecv(SocketDetail::byte_ref dest) {
+	bool EncryptionRecv(byte_ref dest) {
 		return Recv(dest) && Decrypt(dest, dest);
 	}
 
@@ -550,12 +552,12 @@ public:
 		return Packet(head.Type, data);
 	}
 
-	std::future<bool> ASyncSend(const bytearray& src) {
+	std::future<bool> ASyncSend(byte_view src) {
 		return std::async(std::launch::async, [&]() {
 			return this->Send(src);
 		});
 	}
-	std::future<bool> ASyncRecv(bytearray& dest) {
+	std::future<bool> ASyncRecv(byte_ref dest) {
 		return std::async(std::launch::async, [&]() {
 			return this->Recv(dest);
 		});
@@ -572,12 +574,12 @@ public:
 		});
 	}
 
-	std::future<bool> ASyncEncryptionSend(const bytearray& src) {
+	std::future<bool> ASyncEncryptionSend(byte_view src) {
 		return std::async(std::launch::async, [&]() {
 			return this->EncryptionSend(src);
 		});
 	}
-	std::future<bool> ASyncEncryptionRecv(bytearray& dest) {
+	std::future<bool> ASyncEncryptionRecv(byte_ref dest) {
 		return std::async(std::launch::async, [&]() {
 			return this->EncryptionRecv(dest);
 		});
