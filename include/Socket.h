@@ -325,9 +325,9 @@ protected:
 
 	static int Poll(poll_t* fds, unsigned int nfds, int timeout) {
 #ifdef _MSC_BUILD
-		int ret = WSAPoll(fds, nfds, 0);
+		int ret = WSAPoll(fds, nfds, timeout);
 #else 
-		int ret = poll(fds, nfds, 0);
+		int ret = poll(fds, nfds, timeout);
 #endif // _MSC_BUILD
 		return ret;
 	}
