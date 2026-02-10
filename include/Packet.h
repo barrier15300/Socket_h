@@ -211,13 +211,13 @@ struct Packet {
 
 	const bytearray& GetRawPacket() const { return m_buffer; }
 	std::optional<const byte_view> GetRawData() const {
-		if (CheckHeader()) {
+		if (CheckHeader(0)) {
 			return std::nullopt;
 		}
 		return byte_view(m_buffer.begin(), m_buffer.end()).subspan(HeaderSize);
 	}
 	std::optional<const byte_ref> RefRawData() {
-		if (CheckHeader()) {
+		if (CheckHeader(0)) {
 			return std::nullopt;
 		}
 		return byte_ref(m_buffer.begin(), m_buffer.end()).subspan(HeaderSize);
@@ -269,7 +269,7 @@ struct Packet {
 		}
 		size_t dataSize = (m_buffer.size() - HeaderSize) / sizeof(T);
 		std::vector<T> data(dataSize);
-		std::memcpy(data.data(), m_buffer.data() + HeaderSize, m_buffer.size() - HeaderSize);
+		std::memcpy(data.data(), m_buffer.data() + HeaderSize, dataSize * sizeof(T));
 		return data;
 	}
 
