@@ -208,10 +208,18 @@ struct Packet {
 
 	size_t Size() const { return m_buffer.size(); }
 
-	const bytearray& GetBuffer() const { return m_buffer; }
-	Packet& SetBuffer(bytearray&& src) {
-		m_buffer = std::move(src);
-		return *this;
+	const bytearray& GetRawPacket() const { return m_buffer; }
+	std::optional<const byte_view> GetRawData() const {
+		if (CheckHeader()) {
+			return std::nullopt;
+		}
+		return byte_view(m_buffer.begin(), m_buffer.end()).first(HeaderSize);
+	}
+	std::optional<const byte_ref> RefRawData() {
+		if (CheckHeader()) {
+			return std::nullopt;
+		}
+		return byte_ref(m_buffer.begin(), m_buffer.end()).first(HeaderSize);
 	}
 
 	std::optional<Header> GetHeader() const {

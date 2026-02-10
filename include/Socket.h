@@ -520,7 +520,7 @@ public:
 		if (src.CheckHeader()) {
 			return false;
 		}
-		return Send(src.GetBuffer());
+		return Send(src.GetRawPacket());
 	}
 	std::optional<Packet> Recv() {
 		bytearray head(Packet::HeaderSize);
@@ -548,7 +548,7 @@ public:
 		if (src.CheckHeader()) {
 			return false;
 		}
-		bytearray data(src.GetBuffer().begin() + Packet::HeaderSize, src.GetBuffer().end());
+		bytearray data(src.GetRawPacket().begin() + Packet::HeaderSize, src.GetRawPacket().end());
 		bool flag = Encrypt(data, data);
 		Packet pak = Packet(src.GetHeader()->Type, data);
 		return flag && Send(pak);
