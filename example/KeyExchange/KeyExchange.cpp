@@ -30,5 +30,7 @@ int main(int argc, char* argv[]) {
 	}
 	std::cout << std::endl;
 
+	assert(same);
+
 	return 0;
 }
