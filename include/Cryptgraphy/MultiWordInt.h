@@ -85,7 +85,15 @@ struct bigint {
 	/// Assignment Operator Module
 
 	constexpr bigint& operator=(const bigint& from) noexcept { *m_words = *from.m_words; return *this; }
-	constexpr bigint& operator=(bigint&& from) noexcept { delete m_words; m_words = from.m_words; from.m_words = nullptr; return *this; }
+	constexpr bigint& operator=(bigint&& from) noexcept {
+		if (from.m_words == m_words) {
+			return *this;
+		}
+		delete m_words;
+		m_words = from.m_words;
+		from.m_words = nullptr;
+		return *this;
+	}
 	constexpr bigint& operator=(word_t from) noexcept requires(!IsSigned) {
 		*this = std::move(bigint(from));
 		return *this;
@@ -214,13 +222,16 @@ struct bigint {
 	template<std::ranges::range R>
 		requires (std::is_convertible_v<word_t, std::ranges::range_value_t<R>>)
 	constexpr bigint& FromWords(R&& r) {
-		auto fb = std::ranges::begin(r);
-		auto fe = std::ranges::end(r);
-		for (auto& elem : words()) {
-			if (fb == fe) {
+		auto beg = m_words->begin();
+		auto end = m_words->end();
+		for (const auto&& elem : r) {
+			if (beg == end) {
 				break;
 			}
-			elem = *(fb++);
+			*(beg++) = elem;
+		}
+		for (; beg != end; ++beg) {
+			*beg = 0;
 		}
 		return *this;
 	}
@@ -317,7 +328,7 @@ struct bigint {
 
 		return ret;
 	}
-	static constexpr bigint Karatuba_Legacy(const bigint& x, const bigint& y) {
+	static constexpr bigint Karatuba(const bigint& x, const bigint& y) {
 		bigint ret = 0;
 		
 		if (x == 0 || y == 0) {
@@ -362,50 +373,6 @@ struct bigint {
 		ret += z2;
 		
 		return ret;
-	}
-	static constexpr bigint Karatuba(const bigint& x, const bigint& y) {
-		if (x == 0 || y == 0) {
-			return bigint(0);
-		}
-
-		bigint t[4]{};
-
-		bigint z0;
-		bigint z1;
-		bigint z2;
-
-		auto rec = [&](auto&& self, arr_view vx, arr_view vy) -> bigint& {
-
-			count_t halfwords = vx.size() >> 1;
-
-			if (halfwords <= 1) {
-				auto [low, high] = MulBase(vx.front(), vy.front());
-				word_t words[2] = {low, high};
-				return z0.FromWords(words);
-			}
-
-			arr_view xl = vx.subspan(0, halfwords);
-			arr_view xh = vx.subspan(halfwords);
-			arr_view yl = vy.subspan(0, halfwords);
-			arr_view yh = vy.subspan(halfwords);
-
-			z0 = self(self, xl, yl);
-			z2 = self(self, xh, yh);
-			
-			t[0].FromWords(xl) += t[2].FromWords(xh);
-			t[1].FromWords(yl) += t[2].FromWords(yh);
-
-			xl = arr_view(t[0].words()).subspan(halfwords);
-			yl = arr_view(t[1].words()).subspan(halfwords);
-			
-			z1 = self(self, xl, yl);
-			z1 -= z0;
-			z1 -= z2;
-
-			return z0.AssignAdd(z1.AssignLeftShift(halfwords * WordBits)).AssignAdd(z2.AssignLeftShift(2 * halfwords * WordBits));
-		};
-		
-		return rec(rec, x.words(), y.words());
 	}
 	constexpr bigint& AssignMul(bigint src) {
 		return *this = NormalMul(*this, src);
