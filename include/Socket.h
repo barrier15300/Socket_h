@@ -563,12 +563,12 @@ public:
 	}
 
 	std::future<bool> ASyncSend(byte_view src) {
-		return std::async(std::launch::async, [&]() {
+		return std::async(std::launch::async, [=]() {
 			return this->Send(src);
 		});
 	}
 	std::future<bool> ASyncRecv(byte_ref dest) {
-		return std::async(std::launch::async, [&]() {
+		return std::async(std::launch::async, [=]() {
 			return this->Recv(dest);
 		});
 	}
@@ -585,12 +585,12 @@ public:
 	}
 
 	std::future<bool> ASyncEncryptionSend(byte_view src) {
-		return std::async(std::launch::async, [&]() {
+		return std::async(std::launch::async, [=]() {
 			return this->EncryptionSend(src);
 		});
 	}
 	std::future<bool> ASyncEncryptionRecv(byte_ref dest) {
-		return std::async(std::launch::async, [&]() {
+		return std::async(std::launch::async, [=]() {
 			return this->EncryptionRecv(dest);
 		});
 	}
