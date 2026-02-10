@@ -745,6 +745,7 @@ private:
 	arr_t* m_words = new arr_t();
 };
 
+#if 0
 
 ///
 /// variable-size
@@ -954,3 +955,5 @@ private:
 	arr_t m_words{};
 
 };
+
+#endif
