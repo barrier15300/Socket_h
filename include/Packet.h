@@ -123,9 +123,9 @@ struct Packet {
 	static constexpr bool cross_convertible = SocketDetail::cross_convertible<T>;
 
 	Packet() {};
-	Packet(const Packet&) = delete;
+	Packet(const Packet&) = default;
 	Packet(Packet&&) = default;
-	Packet& operator=(const Packet&) = delete;
+	Packet& operator=(const Packet&) = default;
 	Packet& operator=(Packet&&) = default;
 
 	Packet(uint32_t id, const void* src, uint32_t size) {
@@ -169,7 +169,7 @@ struct Packet {
 	explicit Packet(const std::vector<T>& data) requires (memcpyable<T> && !cross_convertible<T>) : Packet(Header::type_hash_code<std::vector<T>>(), data.data(), data.size() * sizeof(T)) {}
 
 	template<class T>
-	Packet(uint32_t id, const T& data) requires (cross_convertible<T>) : Packet(id, Convert<T>(data));
+	Packet(uint32_t id, const T& data) requires (cross_convertible<T>) : Packet(id, Convert<T>(data)) {};
 	template<class enumT, class T>
 	Packet(enumT type, const T& data) requires (is_enum32<enumT>&& cross_convertible<T>) : Packet(static_cast<uint32_t>(type), data) {}
 	template<class T>
@@ -214,13 +214,13 @@ struct Packet {
 		if (CheckHeader()) {
 			return std::nullopt;
 		}
-		return byte_view(m_buffer.begin(), m_buffer.end()).first(HeaderSize);
+		return byte_view(m_buffer.begin(), m_buffer.end()).subspan(HeaderSize);
 	}
 	std::optional<const byte_ref> RefRawData() {
 		if (CheckHeader()) {
 			return std::nullopt;
 		}
-		return byte_ref(m_buffer.begin(), m_buffer.end()).first(HeaderSize);
+		return byte_ref(m_buffer.begin(), m_buffer.end()).subspan(HeaderSize);
 	}
 
 	std::optional<Header> GetHeader() const {

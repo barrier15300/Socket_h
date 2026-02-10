@@ -534,7 +534,8 @@ public:
 		if (src.CheckHeader()) {
 			return false;
 		}
-		return EncryptionSend(*src.GetRawData());
+		auto head = std::bit_cast<Packet::header_bytes>(*src.GetHeader());
+		return Send(head) && EncryptionSend(*src.GetRawData());
 	}
 	std::optional<Packet> EncryptionRecv() {
 		Packet::header_bytes headbuf{};

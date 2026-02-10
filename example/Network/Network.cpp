@@ -1,4 +1,5 @@
 #include "include/Socket.h"
+#include <map>
 
 void Server();
 void Client();
@@ -131,7 +132,7 @@ void Server() {
 				if (oc == c) {
 					continue;
 				}
-				oc.EncryptionSend(send);
+				oc.EncryptionSend(Packet(send));
 			}
 		}
 	}
@@ -194,8 +195,7 @@ void Client() {
 
 				std::lock_guard<std::mutex> lock(mtx);
 
-				Packet pak = Packet(sendval);
-				server.EncryptionSend(sendval);
+				server.EncryptionSend(Packet(sendval));
 			}
 		}
 	};
@@ -226,5 +226,3 @@ void Client() {
 
 	inputthread.join();
 }
-
-
