@@ -66,20 +66,11 @@ struct bigint {
 		}
 		*this = bigint(ret);
 	}
-	template<std::ranges::contiguous_range R>
+	template<std::ranges::range R>
 	constexpr bigint(const R& arr) {
-		using T = std::remove_cvref_t<std::ranges::range_value_t<R>>;
-		constexpr count_t totalbytes = WordBytes;
-		const count_t copycount = (arr.size() * sizeof(T) < totalbytes) ? arr.size() : totalbytes / sizeof(T);
-		std::fill(words().begin(), words().end(), 0);
-		auto it = std::bit_cast<T*>(words().data()); // TODO: resolve potential undefined behavior
-		auto end = it + copycount;
-		for (auto&& elem : arr) {
-			*it = elem;
-			if (++it == end) {
-				break;
-			}
-		}
+		words() = constexpr_bytes_cast<arr_t>(
+			constexpr_bytes_cast<R>(arr)
+		);
 	}
 	constexpr explicit bigint(std::string_view text) {
 		*this = Parse(text);

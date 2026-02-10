@@ -17,16 +17,9 @@ public:
 	
 	struct state {
 
-		constexpr state() {}
+		constexpr state() noexcept {}
 		constexpr state(byte_view from) {
-			auto it = std::bit_cast<byte_t*>(m_words.data());
-			auto end = std::bit_cast<byte_t*>(m_words.data() + b);
-			for (auto&& c : from) {
-				*it = c;
-				if (++it == end) {
-					break;
-				}
-			}
+			m_words = constexpr_bytes_cast<decltype(m_words)>(from);
 		}
 		constexpr state(const bytearray& from) : state(byte_view(from)) {}
 		constexpr state(bytearray&& from) : state(byte_view(from)) {}
@@ -89,12 +82,7 @@ public:
 		}
 
 		constexpr operator bytearray() const {
-			bytearray ret;
-			ret.reserve(sizeof(m_words));
-			for (size_t i = 0, c = sizeof(m_words); i < c; ++i) {
-				ret.push_back(*(std::bit_cast<const byte_t*>(m_words.data()) + i));
-			}
-			return ret;
+			return constexpr_bytes_cast(m_words);
 		}
 
 		constexpr size_t GetIdx(size_t x, size_t y) const {
