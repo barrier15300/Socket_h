@@ -563,18 +563,18 @@ public:
 	}
 
 	std::future<bool> ASyncSend(bytearray&& src) {
-		return std::async(std::launch::async, [target = std::move(src)]() {
+		return std::async(std::launch::async, [&, target = std::move(src)]() {
 			return this->Send(target);
 		});
 	}
 	std::future<bool> ASyncRecv(byte_ref dest) {
-		return std::async(std::launch::async, [=]() {
+		return std::async(std::launch::async, [=, this]() {
 			return this->Recv(dest);
 		});
 	}
 
 	std::future<bool> ASyncSend(Packet&& src) {
-		return std::async(std::launch::async, [target = std::move(src)]() {
+		return std::async(std::launch::async, [&, target = std::move(src)]() {
 			return this->Send(target);
 		});
 	}
@@ -585,18 +585,18 @@ public:
 	}
 
 	std::future<bool> ASyncEncryptionSend(bytearray&& src) {
-		return std::async(std::launch::async, [target = std::move(src)]() {
+		return std::async(std::launch::async, [&, target = std::move(src)]() {
 			return this->EncryptionSend(target);
 		});
 	}
 	std::future<bool> ASyncEncryptionRecv(byte_ref dest) {
-		return std::async(std::launch::async, [=]() {
+		return std::async(std::launch::async, [=, this]() {
 			return this->EncryptionRecv(dest);
 		});
 	}
 
 	std::future<bool> ASyncEncryptionSend(Packet&& src) {
-		return std::async(std::launch::async, [target = std::move(src)]() {
+		return std::async(std::launch::async, [&, target = std::move(src)]() {
 			return this->EncryptionSend(target);
 		});
 	}
