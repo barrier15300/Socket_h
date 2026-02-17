@@ -13,6 +13,7 @@
 #include <iterator>
 #include <memory>
 #include <random>
+#include <ranges>
 #include <span>
 #include <string>
 #include <utility>

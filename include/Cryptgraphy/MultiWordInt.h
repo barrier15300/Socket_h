@@ -473,12 +473,14 @@ struct bigint {
 			(c - ('a' - 'A')) :
 			(c);
 	}
+	static constexpr std::string_view DigitsTable = "0123456789abcdefghijklmnopqrstuvwxyz";
+	static constexpr auto DigitsTableUpper = DigitsTable | std::ranges::views::transform([](auto x) { return ToUpper(x); });
+	
 	static constexpr std::string WordToString(word_t v, int base) {
-		constexpr std::string_view list = "0123456789abcdefghijkmnlopqrstuvwxyz";
 		std::string ret;
 		ret.reserve(WordCharSize);
 		while (v != 0) {
-			ret.push_back(list[v % base]);
+			ret.push_back(DigitsTable[v % base]);
 			v /= base;
 		}
 		std::reverse(ret.begin(), ret.end());
@@ -490,13 +492,11 @@ struct bigint {
 		word_t ret = 0;
 
 		auto getidx = [&](char c) -> size_t {
-			constexpr std::string_view listlower = "0123456789abcdefghijkmnlopqrstuvwxyz";
-			constexpr std::string_view listupper = "0123456789ABCDEFGHIJKMNLOPQRSTUVWXYZ";
-			size_t idx = listlower.find(c);
+			size_t idx = DigitsTable.find(c);
 			if (idx != std::string_view::npos) {
 				return idx;
 			}
-			return listupper.find(c);
+			return DigitsTableUpper.find(c);
 		};
 
 		for (; it != end; ++it) {
@@ -520,7 +520,7 @@ struct bigint {
 		
 		assert((base >= 2 && base <= 36) && "Invalid base");
 
-		auto proc = text.substr(0, text.find_first_not_of("0123456789abcdefghijkmnlopqrstuvwxyzABCDEFGHIJKMNLOPQRSTUVWXYZ"));
+		auto proc = text.substr(0, text.find_first_not_of("0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"));
 		auto it = proc.rbegin();
 		auto end = proc.rend();
 		count_t c = 0;
@@ -586,7 +586,7 @@ struct bigint {
 		return ret;
 	}
 	constexpr std::string ToBase64() const {
-		constexpr std::string_view list = "ABCDEFGHIJKNMLOPQRSTUVWXYZabcdefghijknmlopqrstuvwxyz0123456789+/";
+		constexpr std::string_view list = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
 
 		std::string ret;
 		ret.reserve(this->GetNBit() / std::log2(64) + 1);
@@ -621,8 +621,6 @@ struct bigint {
 		return ret;
 	}
 	constexpr std::string ToString(int base = 10, bool upper = true, bool padding = false) const {
-		constexpr std::string_view list = "0123456789abcdefghijkmnlopqrstuvwxyz";
-		
 		assert((base >= 2 && base <= 36) && "Invalid base");
 
 		word_t word_digits = static_cast<word_t>(WordBits / std::log2(base));
