@@ -21,7 +21,7 @@
 #include "common.h"
 
 #ifdef SOCKET_H_USE_NAMESPACE
-namespace NetIO {
+namespace Socket {
 #endif // SOCKET_H_USE_NAMESPACE
 
 #include "Cryptgraphy/AES128.h"
@@ -335,9 +335,9 @@ protected:
 
 	static int Poll(poll_t* fds, unsigned int nfds, int timeout) {
 #ifdef _MSC_BUILD
-		int ret = WSAPoll(fds, nfds, 0);
+		int ret = WSAPoll(fds, nfds, timeout);
 #else 
-		int ret = poll(fds, nfds, 0);
+		int ret = poll(fds, nfds, timeout);
 #endif // _MSC_BUILD
 		return ret;
 	}
@@ -378,7 +378,12 @@ protected:
 
 public:
 
-	using bytearray = typename sockbase::bytearray;
+	using bytearray = SocketDetail::bytearray;
+	using byte_view = SocketDetail::byte_view;
+	using byte_ref = SocketDetail::byte_ref;
+
+	template<class T>
+	static constexpr bool memcpyable = SocketDetail::memcpyable<T>;
 
 	basic_TCPSocket() : sockbase() {}
 	basic_TCPSocket(typename sockbase::IPType addr) : basic_TCPSocket() {
@@ -502,10 +507,10 @@ public:
 		return true;
 	}
 
-	bool Send(const bytearray& src) {
+	bool Send(byte_view src) {
 		return RawSend(src.data(), static_cast<int>(src.size()));
 	}
-	bool Recv(bytearray& dest) {
+	bool Recv(byte_ref dest) {
 		if (dest.empty()) { return false; }
 		return RawRecv(dest.data(), static_cast<int>(dest.size()));
 	}
@@ -514,27 +519,26 @@ public:
 		if (src.CheckHeader()) {
 			return false;
 		}
-		return Send(src.GetBuffer());
+		return Send(src.GetRawPacket());
 	}
 	std::optional<Packet> Recv() {
-		bytearray head(Packet::HeaderSize);
-		if (!Recv(head)) {
+		Packet::header_bytes headbuf{};
+		if (!Recv(headbuf)) {
 			return std::nullopt;
 		}
-		Packet pak;
-		pak.SetBuffer(std::move(head));
-		bytearray data(pak.GetHeader()->Size);
+		Header head = std::bit_cast<Header>(headbuf);
+		bytearray data(head.Size);
 		if (!Recv(data)) {
 			return std::nullopt;
 		}
-		return Packet(pak.GetHeader()->Type, data);
+		return Packet(head.Type, data);
 	}
 
-	bool EncryptionSend(const bytearray& src) {
-		bytearray target;
+	bool EncryptionSend(byte_view src) {
+		bytearray target(src.size());
 		return Encrypt(src, target) && Send(target);
 	}
-	bool EncryptionRecv(bytearray& dest) {
+	bool EncryptionRecv(byte_ref dest) {
 		return Recv(dest) && Decrypt(dest, dest);
 	}
 
@@ -542,39 +546,36 @@ public:
 		if (src.CheckHeader()) {
 			return false;
 		}
-		bytearray data(src.GetBuffer().begin() + Packet::HeaderSize, src.GetBuffer().end());
-		bool flag = Encrypt(data, data);
-		Packet pak = Packet(src.GetHeader()->Type, data);
-		return flag && Send(pak);
+		auto head = std::bit_cast<Packet::header_bytes>(*src.GetHeader());
+		return Send(head) && EncryptionSend(*src.GetRawData());
 	}
 	std::optional<Packet> EncryptionRecv() {
-		bytearray head(Packet::HeaderSize);
-		if (!Recv(head)) {
+		Packet::header_bytes headbuf{};
+		if (!Recv(headbuf)) {
 			return std::nullopt;
 		}
-		Packet pak;
-		pak.SetBuffer(std::move(head));
-		bytearray data(pak.GetHeader()->Size);
+		Header head = std::bit_cast<Header>(headbuf);
+		bytearray data(head.Size);
 		if (!EncryptionRecv(data)) {
 			return std::nullopt;
 		}
-		return Packet(pak.GetHeader()->Type, data);
+		return Packet(head.Type, data);
 	}
 
-	std::future<bool> ASyncSend(const bytearray& src) {
-		return std::async(std::launch::async, [&]() {
-			return this->Send(src);
+	std::future<bool> ASyncSend(bytearray&& src) {
+		return std::async(std::launch::async, [&, target = std::move(src)]() {
+			return this->Send(target);
 		});
 	}
-	std::future<bool> ASyncRecv(bytearray& dest) {
-		return std::async(std::launch::async, [&]() {
+	std::future<bool> ASyncRecv(byte_ref dest) {
+		return std::async(std::launch::async, [=, this]() {
 			return this->Recv(dest);
 		});
 	}
 
-	std::future<bool> ASyncSend(const Packet& src) {
-		return std::async(std::launch::async, [&]() {
-			return this->Send(src);
+	std::future<bool> ASyncSend(Packet&& src) {
+		return std::async(std::launch::async, [&, target = std::move(src)]() {
+			return this->Send(target);
 		});
 	}
 	std::future<std::optional<Packet>> ASyncRecv() {
@@ -583,25 +584,47 @@ public:
 		});
 	}
 
-	std::future<bool> ASyncEncryptionSend(const bytearray& src) {
-		return std::async(std::launch::async, [&]() {
-			return this->EncryptionSend(src);
+	std::future<bool> ASyncEncryptionSend(bytearray&& src) {
+		return std::async(std::launch::async, [&, target = std::move(src)]() {
+			return this->EncryptionSend(target);
 		});
 	}
-	std::future<bool> ASyncEncryptionRecv(bytearray& dest) {
-		return std::async(std::launch::async, [&]() {
+	std::future<bool> ASyncEncryptionRecv(byte_ref dest) {
+		return std::async(std::launch::async, [=, this]() {
 			return this->EncryptionRecv(dest);
 		});
 	}
 
-	std::future<bool> ASyncEncryptionSend(const Packet& src) {
-		return std::async(std::launch::async, [&]() {
-			return this->EncryptionSend(src);
+	std::future<bool> ASyncEncryptionSend(Packet&& src) {
+		return std::async(std::launch::async, [&, target = std::move(src)]() {
+			return this->EncryptionSend(target);
 		});
 	}
 	std::future<std::optional<Packet>> ASyncEncryptionRecv() {
 		return std::async(std::launch::async, [&]() {
 			return this->EncryptionRecv();
+		});
+	}
+
+	template<class T>
+	bool _Send(const T& target) requires (memcpyable<T>) {
+		return RawSend(&target, sizeof(T));
+	}
+	template<class T>
+	bool _Recv(T& target) requires (memcpyable<T>) {
+		return RawRecv(&target, sizeof(T));
+	}
+
+	template<class T>
+	std::future<bool> _ASyncSend(const T& target) requires (memcpyable<T>) {
+		return std::async(std::launch::async, [this, target]() {
+			return this->_Send<T>(target);
+		});
+	}
+	template<class T>
+	std::future<bool> _ASyncRecv(T& target) requires (memcpyable<T>) {
+		return std::async(std::launch::async, [this, &target]() {
+			return this->_Recv<T>(target);
 		});
 	}
 

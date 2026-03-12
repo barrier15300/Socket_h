@@ -1,6 +1,10 @@
 ﻿#pragma once
 #include "common.h"
 
+///
+/// fixed-size
+///
+
 template<size_t _words, bool _sign = false>
 struct bigint {
 	using count_t = size_t;
@@ -17,9 +21,9 @@ struct bigint {
 	static constexpr count_t WordCharSize = WordByte * 2;
 	static constexpr count_t AllBits = Words * WordBits;
 
-	static_assert(Words > 0, "invalid WordCount");
-
 	using arr_t = std::array<word_t, Words>;
+	using arr_view = std::span<const word_t>;
+	using arr_ref = std::span<word_t>;
 	using bits_t = std::bitset<AllBits>;
 	using signed_t = bigint<Words, true>;
 	using unsigned_t = bigint<Words, false>;
@@ -81,7 +85,15 @@ struct bigint {
 	/// Assignment Operator Module
 
 	constexpr bigint& operator=(const bigint& from) noexcept { *m_words = *from.m_words; return *this; }
-	constexpr bigint& operator=(bigint&& from) noexcept { delete m_words; m_words = from.m_words; from.m_words = nullptr; return *this; }
+	constexpr bigint& operator=(bigint&& from) noexcept {
+		if (from.m_words == m_words) {
+			return *this;
+		}
+		delete m_words;
+		m_words = from.m_words;
+		from.m_words = nullptr;
+		return *this;
+	}
 	constexpr bigint& operator=(word_t from) noexcept requires(!IsSigned) {
 		*this = std::move(bigint(from));
 		return *this;
@@ -207,16 +219,32 @@ struct bigint {
 	constexpr operator unsigned_t& () requires(!IsSigned) {
 		return *this;  // TODO: remove unneccesary conversion
 	}
+	template<std::ranges::range R>
+		requires (std::is_convertible_v<word_t, std::ranges::range_value_t<R>>)
+	constexpr bigint& FromWords(R&& r) {
+		auto beg = m_words->begin();
+		auto end = m_words->end();
+		for (const auto&& elem : r) {
+			if (beg == end) {
+				break;
+			}
+			*(beg++) = elem;
+		}
+		for (; beg != end; ++beg) {
+			*beg = 0;
+		}
+		return *this;
+	}
 
 	/// Arithmetic Module
 	
-	static constexpr bool AddBase(word_t *dest, word_t src, bool carry)  {
+	static constexpr bool AddBase(word_t *dest, word_t src, bool carry) noexcept {
 		word_t a = *dest;
 		word_t b = src + static_cast<word_t>(carry);
 		*dest += b;
 		return (b < src) || (*dest < a);
 	}
-	constexpr bigint& AssignAdd(const bigint& src) {
+	constexpr bigint& AssignAdd(const bigint& src) noexcept {
 		bool carry = false;
 		for (count_t i = 0; i < Words; ++i) {
 			carry = AddBase(
@@ -265,41 +293,89 @@ struct bigint {
 
 		return { t1, t2 };
 	}
-	constexpr bigint& AssignMul(bigint src) {
-		
-		bigint base = *this;
-		*this = 0;
+	static constexpr bigint NormalMul(const bigint& x, const bigint& y) {
+		bigint ret = 0;
+
 		for (count_t j = 0; j < Words; ++j) {
-			const word_t src_word = src.words()[j];
-			
-			if (src_word == 0) {
+			const word_t y_word = y.words()[j];
+
+			if (y_word == 0) {
 				continue;
 			}
-			
+
 			word_t carry = 0;
 			bool carryflag = false;
-			
+
 			for (count_t i = 0; i + j < Words; ++i) {
 				word_t temp = carry;
-			
+
 				const auto [lower, upper] = MulBase(
-					src_word,
-					base.words()[i]
+					y_word,
+					x.words()[i]
 				);
-				
+
 				carryflag = AddBase(&temp, lower, carryflag);
-				
+
 				carry = upper + carryflag;
-				
+
 				carryflag = AddBase(
-					std::addressof(this->words()[i + j]),
+					std::addressof(ret.words()[i + j]),
 					temp,
 					false
 				);
 			}
 		}
+
+		return ret;
+	}
+	static constexpr bigint Karatuba(const bigint& x, const bigint& y) {
+		bigint ret = 0;
 		
-		return *this;
+		if (x == 0 || y == 0) {
+			return ret;
+		}
+
+		count_t nbit = std::max(x.GetNBit(), y.GetNBit());
+		count_t halfbits = (nbit + (nbit & 1)) / 2;
+
+		if (halfbits <= WordBits * 2) {
+			ret = NormalMul(x, y);
+			return ret;
+		}
+
+		bigint halfmask = (bigint(1) << halfbits) - 1;
+
+		bigint xl = x; 
+		bigint xh = x; 
+		bigint yl = y; 
+		bigint yh = y; 
+
+		xl &= halfmask;
+		xh >>= halfbits;
+		yl &= halfmask;
+		yh >>= halfbits;
+		
+		bigint z0 = Karatuba(xl, yl);
+		bigint z2 = Karatuba(xh, yh);
+		
+		xl += xh;
+		yl += yh;
+		bigint z1 = Karatuba(xl, yl);
+
+		z1 -= z0;
+		z1 -= z2;
+		ret += z0;
+		
+		z1 <<= halfbits;
+		z2 <<= (2 * halfbits);
+
+		ret += z1;
+		ret += z2;
+		
+		return ret;
+	}
+	constexpr bigint& AssignMul(bigint src) {
+		return *this = NormalMul(*this, src);
 	}
 	constexpr std::pair<bigint&, bigint> AssignDivMod(bigint src) {
 		
@@ -347,11 +423,11 @@ struct bigint {
 	constexpr friend bool operator<=(const bigint& lhs, const bigint& rhs) { return lhs.Compare(rhs) <= 0; }
 	constexpr friend bool operator> (const bigint& lhs, const bigint& rhs) { return lhs.Compare(rhs) >  0; }
 	constexpr friend bool operator>=(const bigint& lhs, const bigint& rhs) { return lhs.Compare(rhs) >= 0; }
-	constexpr bigint& AssignLeftShift(word_t c) {
+	constexpr bigint& AssignLeftShift(count_t c) {
 		bits() <<= c;
 		return *this;
 	}
-	constexpr bigint& AssignRightShift(word_t c) {
+	constexpr bigint& AssignRightShift(count_t c) {
 		if constexpr (IsSigned) {
 			if (this->IsNegative()) {
 				unsigned_t shiftmask = 1;
@@ -370,10 +446,10 @@ struct bigint {
 		}
 		return *this;
 	}
-	constexpr bigint& operator<<=(word_t c) { return AssignLeftShift(c); }
-	constexpr bigint& operator>>=(word_t c) { return AssignRightShift(c); }
-	constexpr friend bigint operator<<(bigint lhs, word_t c) { return lhs.AssignLeftShift(c); }
-	constexpr friend bigint operator>>(bigint lhs, word_t c) { return lhs.AssignRightShift(c); }
+	constexpr bigint& operator<<=(count_t c) { return AssignLeftShift(c); }
+	constexpr bigint& operator>>=(count_t c) { return AssignRightShift(c); }
+	constexpr friend bigint operator<<(bigint lhs, count_t c) { return lhs.AssignLeftShift(c); }
+	constexpr friend bigint operator>>(bigint lhs, count_t c) { return lhs.AssignRightShift(c); }
 	constexpr bigint& AssignNot() { bits().flip(); return *this; }
 	constexpr bigint operator~() const { return bigint(*this).AssignNot(); }
 	constexpr bigint& AssignAnd(const bigint& src) { bits() &= src.bits(); return *this; }
@@ -397,12 +473,14 @@ struct bigint {
 			(c - ('a' - 'A')) :
 			(c);
 	}
+	static constexpr std::string_view DigitsTable = "0123456789abcdefghijklmnopqrstuvwxyz";
+	static constexpr auto DigitsTableUpper = DigitsTable | std::ranges::views::transform([](auto x) { return ToUpper(x); });
+	
 	static constexpr std::string WordToString(word_t v, int base) {
-		constexpr std::string_view list = "0123456789abcdefghijkmnlopqrstuvwxyz";
 		std::string ret;
 		ret.reserve(WordCharSize);
 		while (v != 0) {
-			ret.push_back(list[v % base]);
+			ret.push_back(DigitsTable[v % base]);
 			v /= base;
 		}
 		std::reverse(ret.begin(), ret.end());
@@ -414,13 +492,11 @@ struct bigint {
 		word_t ret = 0;
 
 		auto getidx = [&](char c) -> size_t {
-			constexpr std::string_view listlower = "0123456789abcdefghijkmnlopqrstuvwxyz";
-			constexpr std::string_view listupper = "0123456789ABCDEFGHIJKMNLOPQRSTUVWXYZ";
-			size_t idx = listlower.find(c);
+			size_t idx = DigitsTable.find(c);
 			if (idx != std::string_view::npos) {
 				return idx;
 			}
-			return listupper.find(c);
+			return DigitsTableUpper.find(c);
 		};
 
 		for (; it != end; ++it) {
@@ -444,7 +520,7 @@ struct bigint {
 		
 		assert((base >= 2 && base <= 36) && "Invalid base");
 
-		auto proc = text.substr(0, text.find_first_not_of("0123456789abcdefghijkmnlopqrstuvwxyzABCDEFGHIJKMNLOPQRSTUVWXYZ"));
+		auto proc = text.substr(0, text.find_first_not_of("0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"));
 		auto it = proc.rbegin();
 		auto end = proc.rend();
 		count_t c = 0;
@@ -510,7 +586,7 @@ struct bigint {
 		return ret;
 	}
 	constexpr std::string ToBase64() const {
-		constexpr std::string_view list = "ABCDEFGHIJKNMLOPQRSTUVWXYZabcdefghijknmlopqrstuvwxyz0123456789+/";
+		constexpr std::string_view list = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
 
 		std::string ret;
 		ret.reserve(this->GetNBit() / std::log2(64) + 1);
@@ -545,8 +621,6 @@ struct bigint {
 		return ret;
 	}
 	constexpr std::string ToString(int base = 10, bool upper = true, bool padding = false) const {
-		constexpr std::string_view list = "0123456789abcdefghijkmnlopqrstuvwxyz";
-		
 		assert((base >= 2 && base <= 36) && "Invalid base");
 
 		word_t word_digits = static_cast<word_t>(WordBits / std::log2(base));
@@ -622,8 +696,8 @@ struct bigint {
 
 	/// Internal Resource
 
-	constexpr arr_t& words() { return *m_words; }
-	constexpr const arr_t& words() const { return *m_words; }
+	constexpr arr_t& words() noexcept { return *m_words; }
+	constexpr const arr_t& words() const noexcept { return *m_words; }
 	constexpr bits_t& bits() {
 		return *reinterpret_cast<bits_t*>(m_words->data());  // TODO: resolve potential undefined behavior
 	}
@@ -635,3 +709,216 @@ private:
 
 	arr_t* m_words = new arr_t();
 };
+
+#if 0
+
+///
+/// variable-size
+///
+
+template<bool _sign>
+struct bigint<0, _sign> {
+	using count_t = size_t;
+	using diff_t = int64_t;
+	using word_t = uint64_t;
+	using sword_t = int64_t;
+	
+	static constexpr bool IsSigned = _sign;
+	// static constexpr count_t Words = 0;
+	static constexpr count_t WordByte = sizeof(word_t);
+	static constexpr count_t WordBits = WordByte * 8;
+	static constexpr count_t WordCharSize = WordByte * 2;
+	// static constexpr count_t WordBytes = Words * WordByte;
+	// static constexpr count_t AllBits = Words * WordBits;
+
+	using arr_t = std::vector<word_t>;
+	using arr_view = std::span<const word_t>;
+	using arr_ref = std::span<word_t>;
+	using signed_t = bigint<0, true>;
+	using unsigned_t = bigint<0, false>;
+
+	constexpr count_t GetWords() const noexcept {
+		return m_words.size();
+	}
+	constexpr count_t GetWordBytes() const noexcept {
+		return GetWords() * WordByte;
+	}
+	constexpr count_t GetAllBits() const noexcept {
+		return GetWords() * WordBits;
+	}
+	constexpr count_t GetNWord() const noexcept {
+		for (count_t i = m_words.size(); i-- > 0;) {
+			if (m_words[i] != 0) {
+				return i + 1;
+			}
+		}
+		return GetWords();
+	}
+	constexpr count_t GetNBit() const noexcept {
+		count_t idx = GetWords() - 1;
+		count_t word_nbit = std::bit_width(m_words[idx]);
+		return word_nbit == 0 ? GetAllBits() : idx * WordBits + word_nbit;
+	}
+
+	constexpr void Resize(count_t newsize) noexcept {
+		m_words.resize(newsize, 0);
+	}
+
+	static constexpr bool AddBase(word_t src, word_t *dest, bool carry) noexcept {
+		word_t a = *dest;
+		word_t b = src + static_cast<word_t>(carry);
+		*dest += b;
+		return (b < src) || (*dest < a);
+	}
+	constexpr bigint& AssignAdd(const bigint& rhs) noexcept {
+		bool carry = false;
+		for (count_t i = 0; i < GetWords(); ++i) {
+			carry = AddBase(
+				rhs.m_words[i],
+				std::addressof(this->m_words[i]),
+				carry
+			);
+		}
+		return *this;
+	}
+
+	constexpr bigint& AssignNOT() noexcept {
+		std::transform(
+			std::execution::unseq,
+			m_words.begin(),
+			m_words.end(),
+			m_words.begin(),
+			std::bit_not<word_t>()
+		);
+		return *this;
+	}
+	constexpr bigint& AssignAND(const bigint& rhs) noexcept {
+		std::transform(
+			std::execution::unseq,
+			m_words.begin(),
+			m_words.end(),
+			rhs.m_words.begin(),
+			m_words.begin(),
+			std::bit_and<word_t>()
+		);
+		return *this;
+	}
+	constexpr bigint& AssignOR(const bigint& rhs) noexcept {
+		std::transform(
+			std::execution::unseq,
+			m_words.begin(),
+			m_words.end(),
+			rhs.m_words.begin(),
+			m_words.begin(),
+			std::bit_or<word_t>()
+		);
+		return *this;
+	}
+	constexpr bigint& AssignXOR(const bigint& rhs) noexcept {
+		std::transform(
+			std::execution::unseq,
+			m_words.begin(),
+			m_words.end(),
+			rhs.m_words.begin(),
+			m_words.begin(),
+			std::bit_xor<word_t>()
+		);
+		return *this;
+	}
+	static constexpr word_t WordShiftBase(word_t low, word_t high, count_t n) noexcept {
+		return (low >> n) | (high << (WordBits - n));
+	}
+	constexpr bigint& AssignLeftShift(count_t n) noexcept {
+		count_t wordshift = n >> std::bit_width(WordBits - 1);
+		count_t bitshift = n & (WordBits - 1);
+
+		for (count_t i = GetWords() - wordshift; i-- > 0;) {
+			m_words[i + wordshift] = WordShiftBase(
+				i == 0 ? 0 : m_words[i - 1],
+				m_words[i],
+				bitshift
+			);
+		}
+
+		auto offset = std::min(wordshift, GetWords());
+		std::fill(std::execution::unseq, m_words.begin(), m_words.begin() + offset, 0);
+
+		return *this;
+	}
+	constexpr bigint& AssignRightShift(count_t n) noexcept {
+		count_t wordshift = n >> std::bit_width(WordBits - 1);
+		count_t bitshift = WordBits - (n & (WordBits - 1));
+
+		for (count_t i = wordshift, c = GetWords(); i < c; ++i) {
+			m_words[i - wordshift] = WordShiftBase(
+				m_words[i],
+				m_words[i + 1],
+				bitshift
+			);
+		}
+
+		auto offset = std::min(wordshift, GetWords());
+		std::fill(std::execution::unseq, m_words.rbegin(), m_words.rbegin() + offset, 0);
+
+		return *this;
+	}
+
+	constexpr bigint& operator~() noexcept {
+		return AssignNOT();
+	}
+	constexpr bigint& operator&=(const bigint& rhs) noexcept {
+		return AssignAND(rhs);
+	}
+	constexpr bigint& operator|=(const bigint& rhs) noexcept {
+		return AssignOR(rhs);
+	}
+	constexpr bigint& operator^=(const bigint& rhs) noexcept {
+		return AssignXOR(rhs);
+	}
+
+	static constexpr auto Compare(const bigint& lhs, const bigint& rhs) noexcept {
+		count_t words[2] = {lhs.GetWords(), rhs.GetWords()};
+		auto [words_min, words_max] = std::minmax(words[0], words[1]);
+		
+		bool is_bigger_l = words_max == words[0];
+		
+		const bigint& longer = is_bigger_l ? lhs : rhs;
+		const bigint& shorter = is_bigger_l ? rhs : lhs;
+		
+		if (!IsZeroInRef(arr_view(longer.m_words).last(words_max - words_min))) {
+			return is_bigger_l ?
+				std::strong_ordering::greater : std::strong_ordering::less;
+		}
+		
+		for (count_t i = words_min; i-- > 0;) {
+			auto com = lhs.m_words[i] <=> rhs.m_words[i];
+			if (!std::is_eq(com)) {
+				return com;
+			}
+		}
+
+		return std::strong_ordering::equal;
+	}
+	constexpr auto Compare(const bigint& rhs) const noexcept {
+		return Compare(*this, rhs);
+	}
+	friend constexpr auto operator<=>(const bigint& lhs, const bigint& rhs) noexcept {
+		return Compare(lhs, rhs);
+	}
+
+private:
+
+	static constexpr bool IsZeroInRef(arr_view v) noexcept {
+		for (auto&& elem : v) {
+			if (elem != 0) {
+				return false;
+			}
+		}
+		return true;
+	}
+
+	arr_t m_words{};
+
+};
+
+#endif

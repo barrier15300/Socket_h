@@ -89,7 +89,9 @@ struct Header {
 };
 
 /// <summary>
-/// Packet 
+/// Packet
+/// | header (16 byte)   | data (variable) |
+/// | size and data type | raw binary data | 
 /// </summary>
 
 struct Packet {
@@ -98,6 +100,7 @@ struct Packet {
 
 	using byte_t = SocketDetail::byte_t;
 	using bytearray = SocketDetail::bytearray;
+	using header_bytes = SocketDetail::cbytearray<HeaderSize>;
 
 	using byte_view = SocketDetail::byte_view;
 	using byte_ref = SocketDetail::byte_ref;
@@ -109,27 +112,27 @@ struct Packet {
 
 	template<class T>
 	static constexpr bool memcpyable = SocketDetail::memcpyable<T>;
-	
+
 	template<class T>
 	static constexpr bool to_byteable = SocketDetail::to_byteable<T>;
-	
+
 	template<class T>
 	static constexpr bool from_byteable = SocketDetail::from_byteable<T>;
 
 	template<class T>
 	static constexpr bool cross_convertible = SocketDetail::cross_convertible<T>;
 
+	Packet() {};
 	Packet(const Packet&) = default;
 	Packet(Packet&&) = default;
-
 	Packet& operator=(const Packet&) = default;
 	Packet& operator=(Packet&&) = default;
 
-	Packet() {};
-	Packet(const bytearray&) = delete;
-	Packet(bytearray&&) = delete;
-	Packet& operator=(const bytearray&) = delete;
-	Packet& operator=(bytearray&&) = delete;
+	static Packet FromBytes(const bytearray& src) {
+		Packet ret;
+		ret.m_buffer = src;
+		return ret;
+	}
 
 	Packet(uint32_t id, const void* src, uint32_t size) {
 		Header head(id);
@@ -144,42 +147,39 @@ struct Packet {
 	Packet(uint32_t id, const bytearray& data) : Packet(id, data.data(), data.size()) {}
 	template<class enumT>
 	Packet(enumT type, const bytearray& data) requires (is_enum32<enumT>) : Packet(type, data.data(), data.size()) {}
-	
+
 	template<size_t len>
 	Packet(size_t id, const char(&data)[len]) : Packet(id, std::addressof(data), len - 1) {}
 	template<class enumT, size_t len>
 	Packet(enumT type, const char(&data)[len]) requires (is_enum32<enumT>) : Packet(static_cast<uint32_t>(type), std::addressof(data), len - 1) {}
 	template<size_t len>
-	Packet(const char(&data)[len]) : Packet(Header::type_hash_code<std::string>(), std::addressof(data), len - 1) {}
+	explicit Packet(const char(&data)[len]) : Packet(Header::type_hash_code<std::string>(), std::addressof(data), len - 1) {}
 
 	Packet(uint32_t id, const std::string& data) : Packet(id, data.data(), data.size()) {}
 	template<class enumT>
 	Packet(enumT type, const std::string& data) requires (is_enum32<enumT>) : Packet(type, data.data(), data.size()) {}
-	Packet(const std::string& data) : Packet(Header::type_hash_code<std::string>(), data.data(), data.size()) {}
-	
+	explicit Packet(const std::string& data) : Packet(Header::type_hash_code<std::string>(), data.data(), data.size()) {}
+
 	template<class T>
 	Packet(uint32_t id, const T& data) requires (memcpyable<T> && !cross_convertible<T>) : Packet(id, std::addressof(data), sizeof(T)) {}
 	template<class enumT, class T>
 	Packet(enumT type, const T& data) requires (is_enum32<enumT> && memcpyable<T> && !cross_convertible<T>) : Packet(static_cast<uint32_t>(type), std::addressof(data), sizeof(T)) {}
 	template<class T>
-	Packet(const T& data) requires (memcpyable<T> && !cross_convertible<T>) : Packet(Header::type_hash_code<T>(), std::addressof(data), sizeof(T)) {}
+	explicit Packet(const T& data) requires (memcpyable<T> && !cross_convertible<T>) : Packet(Header::type_hash_code<T>(), std::addressof(data), sizeof(T)) {}
 
 	template<class T>
 	Packet(uint32_t id, const std::vector<T>& data) requires (memcpyable<T> && !cross_convertible<T>) : Packet(id, data.data(), data.size() * sizeof(T)) {}
 	template<class enumT, class T>
 	Packet(enumT type, const std::vector<T>& data) requires (is_enum32<enumT> && memcpyable<T> && !cross_convertible<T>) : Packet(static_cast<uint32_t>(type), data.data(), data.size() * sizeof(T)) {}
 	template<class T>
-	Packet(const std::vector<T>& data) requires (memcpyable<T> && !cross_convertible<T>) : Packet(Header::type_hash_code<std::vector<T>>(), data.data(), data.size() * sizeof(T)) {}
+	explicit Packet(const std::vector<T>& data) requires (memcpyable<T> && !cross_convertible<T>) : Packet(Header::type_hash_code<std::vector<T>>(), data.data(), data.size() * sizeof(T)) {}
 
 	template<class T>
-	Packet(uint32_t id, const T& data) requires (cross_convertible<T>) {
-		bytearray _data = Convert<T>(data);
-		*this = Packet(id, _data.data(), _data.size());
-	}
+	Packet(uint32_t id, const T& data) requires (cross_convertible<T>) : Packet(id, Convert<T>(data)) {};
 	template<class enumT, class T>
 	Packet(enumT type, const T& data) requires (is_enum32<enumT> && cross_convertible<T>) : Packet(static_cast<uint32_t>(type), data) {}
 	template<class T>
-	Packet(const T& data) requires (cross_convertible<T>) : Packet(Header::type_hash_code<T>(), data) {}
+	explicit Packet(const T& data) requires (cross_convertible<T>) : Packet(Header::type_hash_code<T>(), data) {}
 
 	template<class T>
 	Packet(uint32_t id, const std::vector<T>& data) requires (cross_convertible<T>) {
@@ -192,9 +192,9 @@ struct Packet {
 		*this = Packet(id, b.data(), b.size());
 	}
 	template<class enumT, class T>
-	Packet(enumT type, const std::vector<T>& data) requires (is_enum32<T> && cross_convertible<T>) : Packet(static_cast<uint32_t>(type), data) {}
+	Packet(enumT type, const std::vector<T>& data) requires (is_enum32<enumT> && cross_convertible<T>) : Packet(static_cast<uint32_t>(type), data) {}
 	template<class T>
-	Packet(const std::vector<T>& data) requires (cross_convertible<T>) : Packet(Header::type_hash_code<std::vector<T>>(), data) {}
+	explicit Packet(const std::vector<T>& data) requires (cross_convertible<T>) : Packet(Header::type_hash_code<std::vector<T>>(), data) {}
 
 	Packet(uint32_t id, std::ifstream& ifs) {
 
@@ -205,7 +205,7 @@ struct Packet {
 		std::istreambuf_iterator<char> begin(ifs);
 		std::istreambuf_iterator<char> end;
 
-		std::string data(begin, end);
+		bytearray data(begin, end);
 
 		*this = Packet(id, data);
 	}
@@ -213,44 +213,20 @@ struct Packet {
 	Packet(enumT type, std::ifstream& ifs) requires (is_enum32<enumT>) : Packet(static_cast<uint32_t>(type), ifs) {}
 	explicit Packet(std::ifstream& ifs) : Packet(Header::type_hash_code<FILE>(), ifs) {}
 
-	/*
-	
-	explicit Packet(uint32_t id, const std::filesystem::path& path) {
-		std::error_code ec;
-		if (path.empty() || !std::filesystem::exists(path, ec) || ec) {
-			return;
-		}
-
-		const auto size = std::filesystem::file_size(path, ec);
-		if (ec) {
-			return;
-		}
-
-		std::ifstream ifs(path, std::ios::binary);
-
-		if (!ifs.is_open()) {
-			return;
-		}
-
-		buf_t data(size);
-		ifs.read(reinterpret_cast<char*>(data.data()), size);
-
-		ifs.close();
-
-		*this = Packet(id, data);
-	}
-	template<class enumT>
-	explicit Packet(enumT type, const std::filesystem::path& path, Header::enum32<enumT> dummy_0 = {}) : Packet(static_cast<uint32_t>(type), path) {}
-	explicit Packet(const std::filesystem::path& path) : Packet(Header::type_hash_code<FILE>(), path) {}
-	
-	*/
-	
 	size_t Size() const { return m_buffer.size(); }
 
-	const bytearray& GetBuffer() const { return m_buffer; }
-	Packet& SetBuffer(bytearray&& src) {
-		m_buffer = std::move(src);
-		return *this;
+	const bytearray& GetRawPacket() const { return m_buffer; }
+	std::optional<const byte_view> GetRawData() const {
+		if (CheckHeader(0)) {
+			return std::nullopt;
+		}
+		return byte_view(m_buffer.begin(), m_buffer.end()).subspan(HeaderSize);
+	}
+	std::optional<const byte_ref> RefRawData() {
+		if (CheckHeader(0)) {
+			return std::nullopt;
+		}
+		return byte_ref(m_buffer.begin(), m_buffer.end()).subspan(HeaderSize);
 	}
 
 	std::optional<Header> GetHeader() const {
@@ -280,7 +256,7 @@ struct Packet {
 		auto&& [ret, _] = Convert<T>(byte_view(m_buffer).subspan(HeaderSize));
 		return ret;
 	}
-	
+
 	template<class T>
 	std::optional<T> Get() const requires (std::same_as<T, std::string>) {
 		if (CheckHeader()) {
@@ -293,13 +269,13 @@ struct Packet {
 	}
 
 	template<class T>
-	std::optional<std::vector<T>> GetArray() const requires (memcpyable<T> && !from_byteable<T>){
+	std::optional<std::vector<T>> GetArray() const requires (memcpyable<T> && !from_byteable<T>) {
 		if (CheckHeader()) {
 			return std::nullopt;
 		}
 		size_t dataSize = (m_buffer.size() - HeaderSize) / sizeof(T);
 		std::vector<T> data(dataSize);
-		std::memcpy(data.data(), m_buffer.data() + HeaderSize, m_buffer.size() - HeaderSize);
+		std::memcpy(data.data(), m_buffer.data() + HeaderSize, dataSize * sizeof(T));
 		return data;
 	}
 
@@ -309,7 +285,7 @@ struct Packet {
 			return std::nullopt;
 		}
 		std::vector<T> ret;
-		byte_view view = byte_view(m_buffer.begin(), HeaderSize);
+		byte_view view = byte_view(m_buffer).subspan(HeaderSize);
 		while (view.begin() < view.end()) {
 			auto&& [elem, last] = Convert<T>(view);
 			ret.push_back(std::move(elem));
@@ -319,7 +295,7 @@ struct Packet {
 	}
 
 	template<class T>
-	static bytearray Convert(const T &from) requires (to_byteable<T>) {
+	static bytearray Convert(const T& from) requires (to_byteable<T>) {
 		return from.ToBytes();
 	}
 
@@ -329,7 +305,7 @@ struct Packet {
 		byte_view view = ret.FromBytes(from);
 		return {ret, view};
 	}
-	
+
 	static void StoreBytes(bytearray& dest, const void* src, uint32_t size) {
 		dest.insert(dest.end(), static_cast<const uint8_t*>(src), static_cast<const uint8_t*>(src) + size);
 	}
