@@ -28,7 +28,7 @@
 # Quick Start
 
 今すぐに試してみたいという方は、
-Visual Studio 2026 insider Edition
+Visual Studio 2026 Edition
 でこちらのリポジトリをクローンします。
 その後は、`Socket.cpp`が砂場です。
 
